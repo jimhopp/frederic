@@ -4,7 +4,7 @@ import (
     "testing"
     "net/http"
     "net/http/httptest"
-//    "bytes"
+    "bytes"
     "fmt"
 
     "appengine"
@@ -61,5 +61,10 @@ func TestHomePageLoggedIn(t *testing.T) {
     code := w.Code
     if code != http.StatusOK {
         t.Errorf("got code %v, want %v", code, http.StatusFound)
+    }
+
+    body := w.Body.Bytes()
+    if !bytes.Equal(body, []byte("This is the SVdP Clients homepage.\n\nYou are authenticated as test@example.org")) {
+        t.Errorf("got body %v, want %v", body, []byte("This is the SVdP Clients homepage.\n\nYou are authenticated as test@example.org"))
     }
 }

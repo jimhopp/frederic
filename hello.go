@@ -20,6 +20,7 @@ func (f ContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func init() {
     http.Handle("/", ContextHandler{handler})
     http.Handle("/api/addclient", ContextHandler{addclient})
+    http.Handle("/api/getclient", ContextHandler{getclient})
 }
 
 func handler(c appengine.Context, w http.ResponseWriter, r *http.Request) {
@@ -45,4 +46,14 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
     }
     w.WriteHeader(http.StatusCreated)
     fmt.Fprintln(w, "client added")
+}
+
+func getclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+    u:= user.Current(c)
+    if u == nil {
+        w.WriteHeader(http.StatusUnauthorized)
+        return
+    }
+    w.WriteHeader(http.StatusCreated)
+    fmt.Fprintln(w, "client view")
 }

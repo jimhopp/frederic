@@ -11,6 +11,13 @@ import (
     "appengine/aetest"
 )
 
+type APITest struct {
+    url     string
+    handler func(appengine.Context, http.ResponseWriter, *http.Request)
+}
+
+var endpoints = []APITest{{"/api/addclient", addclient}, {"/api/getclient", getclient}}
+
 func TestHomePageNotLoggedIn(t *testing.T) {
     inst, err := aetest.NewInstance(nil)
     if err != nil {
@@ -63,25 +70,28 @@ func TestHomePageLoggedIn(t *testing.T) {
     }
 }
 
-func TestAddClientNotAuthenticated(t *testing.T) {
+func TestEndpointsNotAuthenticated(t *testing.T) {
     inst, err := aetest.NewInstance(nil)
     if err != nil {
             t.Fatalf("Failed to create instance: %v", err)
     }
     defer inst.Close()
 
-    req, err := inst.NewRequest("GET", "/api/addclient", nil)
-    if err != nil {
-        t.Fatalf("Failed to create req1: %v", err)
-    }
-    w := httptest.NewRecorder()
-    c := appengine.NewContext(req)
+    for i := 0; i < len(endpoints); i++ {
+        req, err := inst.NewRequest("GET", endpoints[i].url, nil)
+        if err != nil {
+            t.Fatalf("Failed to create req1: %v", err)
+        }
+        w := httptest.NewRecorder()
+        c := appengine.NewContext(req)
 
-    addclient(c, w, req)
+        endpoints[i].handler(c, w, req)
 
-    code := w.Code
-    if code != http.StatusUnauthorized {
-        t.Errorf("got code %v, want %v", code, http.StatusUnauthorized)
+        code := w.Code
+        if code != http.StatusUnauthorized {
+            t.Errorf("got code %v for endpoint %v, want %v", code, 
+                endpoints[i].url, http.StatusUnauthorized)
+        }
     }
 }
 

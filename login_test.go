@@ -8,6 +8,7 @@ import (
 
     "appengine"
     "appengine/user"
+    "appengine/datastore"
     "appengine/aetest"
 )
 
@@ -16,7 +17,7 @@ type APITest struct {
     handler func(appengine.Context, http.ResponseWriter, *http.Request)
 }
 
-var endpoints = []APITest{{"/api/addclient", addclient}, {"/api/getclient", getclient}}
+var endpoints = []APITest{{"/api/addclient", addclient}, {"/api/getallclients", getallclients}}
 
 func TestHomePageNotLoggedIn(t *testing.T) {
     inst, err := aetest.NewInstance(nil)
@@ -96,7 +97,7 @@ func TestEndpointsNotAuthenticated(t *testing.T) {
 }
 
 func TestAddClient(t *testing.T) {
-    inst, err := aetest.NewInstance(nil)
+    inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
     if err != nil {
             t.Fatalf("Failed to create instance: %v", err)
     }
@@ -104,7 +105,7 @@ func TestAddClient(t *testing.T) {
 
     req, err := inst.NewRequest("GET", "/api/addclient", nil)
     if err != nil {
-            t.Fatalf("Failed to create req1: %v", err)
+            t.Fatalf("Failed to create req: %v", err)
     }
 
     aetest.Login(&user.User{Email: "test@example.org"}, req)
@@ -118,10 +119,19 @@ func TestAddClient(t *testing.T) {
     if code != http.StatusCreated {
         t.Errorf("got code %v, want %v", code, http.StatusCreated)
     }
-
     body := w.Body.Bytes()
-    if !bytes.Equal(body, []byte("client added\n")) {
-        t.Errorf("got body %v, want %v", body, []byte("client added\n"))
+    if !bytes.Equal(body, []byte("client ozanam, frederic added")) {
+        t.Errorf("got body %v, want %v", body, []byte("client ozanam, frederic added"))
+    }
+
+    q := datastore.NewQuery("SVDPClient")
+    clients := make([]client, 0, 10)
+    if _, err := q.GetAll(c, &clients); err != nil {
+        t.Fatalf("error on GetAll: %v", err)
+        return
+    }
+    if len(clients) != 1 {
+       t.Errorf("got %v records in query, expected %v", len(clients), 1)
     }
 }
 
@@ -132,9 +142,9 @@ func TestGetClientNotAuthenticated(t *testing.T) {
     }
     defer inst.Close()
 
-    req, err := inst.NewRequest("GET", "/api/getclient", nil)
+    req, err := inst.NewRequest("GET", "/api/getallclients", nil)
     if err != nil {
-        t.Fatalf("Failed to create req1: %v", err)
+        t.Fatalf("Failed to create req: %v", err)
     }
     w := httptest.NewRecorder()
     c := appengine.NewContext(req)

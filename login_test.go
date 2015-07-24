@@ -5,6 +5,9 @@ import (
     "net/http"
     "net/http/httptest"
     "bytes"
+    "strings"
+    "encoding/json"
+    "reflect"
 
     "appengine"
     "appengine/user"
@@ -103,9 +106,13 @@ func TestAddClient(t *testing.T) {
     }
     defer inst.Close()
 
-    req, err := inst.NewRequest("GET", "/api/addclient", nil)
+    data := strings.NewReader(`{"Firstname": "frederic", "Lastname": "ozanam"}`)
+    req, err := inst.NewRequest("PUT", "/api/addclient", data)
     if err != nil {
             t.Fatalf("Failed to create req: %v", err)
+    }
+    req.Header = map[string][]string{
+        "Content-Type": {"application/json"},
     }
 
     aetest.Login(&user.User{Email: "test@example.org"}, req)
@@ -121,7 +128,7 @@ func TestAddClient(t *testing.T) {
     }
     body := w.Body.Bytes()
     if !bytes.Equal(body, []byte("client ozanam, frederic added")) {
-        t.Errorf("got body %v, want %v", body, []byte("client ozanam, frederic added"))
+        t.Errorf("got body %v (%v), want %v", body, string(body), []byte("client ozanam, frederic added"))
     }
 
     q := datastore.NewQuery("SVDPClient")
@@ -135,25 +142,83 @@ func TestAddClient(t *testing.T) {
     }
 }
 
-func TestGetClientNotAuthenticated(t *testing.T) {
-    inst, err := aetest.NewInstance(nil)
+func TestGetAllClients(t *testing.T) {
+    inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
     if err != nil {
             t.Fatalf("Failed to create instance: %v", err)
     }
     defer inst.Close()
 
+    //data := strings.NewReader(`{"Firstname": "frederic", "Lastname": "ozanam"}`)
+    newclients := []client{
+        {Firstname: "frederic", Lastname: "ozanam"},
+        {Firstname: "John", Lastname: "Doe"},
+        {Firstname: "Jane", Lastname: "Doe"},
+    }
+    for i := 0; i < len(newclients); i++ {
+        data, err := json.Marshal(newclients[i])
+        if err != nil {
+            t.Fatalf("Failed to marshal: %v", err)
+        }
+        reqa, err := inst.NewRequest("PUT", "/api/addclient", 
+            bytes.NewReader(data))
+        if err != nil {
+            t.Fatalf("Failed to create req: %v", err)
+        }
+        reqa.Header = map[string][]string{
+            "Content-Type": {"application/json"},
+        }
+
+        aetest.Login(&user.User{Email: "test@example.org"}, reqa)
+
+        wa := httptest.NewRecorder()
+        c := appengine.NewContext(reqa)
+
+        addclient(c, wa, reqa)
+
+        code := wa.Code
+        if code != http.StatusCreated {
+            t.Errorf("got code on addclient %v, want %v", code, 
+                http.StatusCreated)
+        }
+    }
+
     req, err := inst.NewRequest("GET", "/api/getallclients", nil)
     if err != nil {
         t.Fatalf("Failed to create req: %v", err)
     }
+    aetest.Login(&user.User{Email: "test@example.org"}, req)
     w := httptest.NewRecorder()
-    c := appengine.NewContext(req)
 
-    addclient(c, w, req)
+    c := appengine.NewContext(req)
+    getallclients(c, w, req)
 
     code := w.Code
-    if code != http.StatusUnauthorized {
-        t.Errorf("got code %v, want %v", code, http.StatusUnauthorized)
+    if code != http.StatusOK {
+        t.Errorf("got code %v, want %v", code, http.StatusOK)
+    }
+    
+    body := w.Body.Bytes()
+    createdclients := []client{}
+    err = json.Unmarshal(body, &createdclients)
+    if err != nil {
+        t.Errorf("error unmarshaling response to getclients %v\n", err)
+    }
+    if len(createdclients) != len(newclients) {
+        t.Errorf("got %v clients, want %v\n", len(createdclients),
+            len(newclients))
+    }
+    for i := 0; i< len(newclients); i++ {
+        found := false
+        for j:= 0; j<len(createdclients); j++ {
+            if reflect.DeepEqual(createdclients[j], newclients[i]) {
+               found = true
+               break
+            }
+        }
+        if !found {
+            t.Errorf("unable to find %v in %v",
+                newclients[i], &createdclients)
+        }
     }
 }
-

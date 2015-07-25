@@ -45,7 +45,10 @@ func handler(c appengine.Context, w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(http.StatusFound)
         return
     }
-    err := homepageTemplate.Execute(w, u)
+    type homepage struct{U, Logouturl string}
+    l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
+    h := homepage{u.Email, l} 
+    err := homepageTemplate.Execute(w, h)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
     }

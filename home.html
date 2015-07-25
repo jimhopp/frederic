@@ -1,8 +1,11 @@
 <html>
   <title>St. Vincent de Paul (St. Charles Borromeo Confernce) Home Page</title>
   <body>
-    <p>Welcome to the home page of the Conference, {{.}}!</p>
+<!-- TODO: template for site nav included in each page -->
+    <p>Welcome to the home page of the Conference, {{.U}}!</p>
     <br>
     Click <a href="/clients">here</a> to see a list of our clients.
+    <br>
+    <a href="{{ .Logouturl }}">Logout</a>
   </body>
 </html>

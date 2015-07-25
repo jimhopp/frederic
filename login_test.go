@@ -58,6 +58,10 @@ func TestHomePage(t *testing.T) {
     if !bytes.Contains(body, []byte("Welcome to the home page of the Conference, test@example.org!")) {
         t.Errorf("got body %v, did not contain %v", body, []byte("Welcome to the home page of the Conference, test@example.org"))
     }
+
+    if !bytes.Contains(body, []byte("Logout")) {
+        t.Errorf("got body %v, did not contain %v", body, []byte("Logout"))
+    }
 }
 
 func TestListClientsPage(t *testing.T) {

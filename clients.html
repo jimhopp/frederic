@@ -1,0 +1,11 @@
+<html>
+  <title>St. Vincent de Paul (St. Charles Borromeo Conference) Clients</title>
+  <body>
+    <table>
+      <tr><td>First Name</td><td>Last Name</td></tr>
+      {{ range . }}
+      <tr><td>{{ .Firstname }}</td><td>{{ .Lastname }}</td></tr>
+      {{ end }}
+    </table>
+  </body>
+</html>

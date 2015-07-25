@@ -5,6 +5,7 @@ import (
     "net/http"
     "encoding/json"
     "log"
+    "html/template"
 
     "appengine"
     "appengine/user"
@@ -27,6 +28,7 @@ func (f ContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func init() {
     http.Handle("/", ContextHandler{handler})
+    http.Handle("/clients", ContextHandler{listclients})
     http.Handle("/api/addclient", ContextHandler{addclient})
     http.Handle("/api/getallclients", ContextHandler{getallclients})
 }
@@ -43,8 +45,38 @@ func handler(c appengine.Context, w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(http.StatusFound)
         return
     }
-    fmt.Fprintf(w, "This is the SVdP Clients homepage.\n\nYou are authenticated as %v", u)
+    err := homepageTemplate.Execute(w, u)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+    }
 }
+var homepageTemplate = template.Must(template.ParseFiles("home.html"))
+
+func listclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+    u := user.Current(c)
+    if u == nil {
+        url, err := user.LoginURL(c, r.URL.String())
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+        w.Header().Set("Location", url)
+        w.WriteHeader(http.StatusFound)
+        return
+    }
+ 
+    q := datastore.NewQuery("SVDPClient")
+    Clients := make([]client, 0, 10)
+    if _, err := q.GetAll(c, &Clients); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    err := clientsTemplate.Execute(w, Clients)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+    }
+}
+var clientsTemplate = template.Must(template.ParseFiles("clients.html"))
 
 func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
     u:= user.Current(c)

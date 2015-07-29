@@ -1,4 +1,8 @@
 package frederic
+//TODO: -common web page, api auth logic
+//      -template for header on pages
+//      -figure out testing of update pages
+//      -rename files
 
 import (
     "fmt"
@@ -29,6 +33,7 @@ func (f ContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func init() {
     http.Handle("/", ContextHandler{handler})
     http.Handle("/clients", ContextHandler{listclients})
+    http.Handle("/addclient", ContextHandler{newclient})
     http.Handle("/api/addclient", ContextHandler{addclient})
     http.Handle("/api/getallclients", ContextHandler{getallclients})
 }
@@ -53,7 +58,8 @@ func handler(c appengine.Context, w http.ResponseWriter, r *http.Request) {
         http.Error(w, err.Error(), http.StatusInternalServerError)
     }
 }
-var homepageTemplate = template.Must(template.ParseFiles("home.html"))
+
+var homepageTemplate = template.Must(template.ParseFiles("home.html", "scripts.html"))
 
 func listclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
     u := user.Current(c)
@@ -79,7 +85,28 @@ func listclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
         http.Error(w, err.Error(), http.StatusInternalServerError)
     }
 }
-var clientsTemplate = template.Must(template.ParseFiles("clients.html"))
+var clientsTemplate = template.Must(template.ParseFiles("clients.html", 
+    "scripts.html"))
+
+func newclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+    u := user.Current(c)
+    if u == nil {
+        url, err := user.LoginURL(c, r.URL.String())
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+        w.Header().Set("Location", url)
+        w.WriteHeader(http.StatusFound)
+        return
+    }
+ 
+    err := newClientTemplate.Execute(w, u)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+    }
+}
+var newClientTemplate = template.Must(template.ParseFiles("newclient.html", "scripts.html"))
 
 func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
     u:= user.Current(c)
@@ -92,6 +119,7 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
     body := make([]byte, r.ContentLength)
     _, err := r.Body.Read(body)
     err = json.Unmarshal(body, new)
+    log.Printf("api/addclient: got %v\n", string(body))
     if err != nil {
 	log.Printf("unmarshaling error:%v\n", err)
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -105,8 +133,9 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
          return
     }
 
+    b, err := json.Marshal(new)
     w.WriteHeader(http.StatusCreated)
-    fmt.Fprintf(w, "client %v, %v added", new.Lastname, new.Firstname)
+    fmt.Fprint(w, string(b))
 }
 
 func getallclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {

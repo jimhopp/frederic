@@ -1,0 +1,43 @@
+<html>
+  <title>St. Vincent de Paul (St. Charles Borromeo Conference) New Client</title>
+{{ template "scripts" }}
+  <body>
+    The New Client page.
+      <p id="status">Empty status</p>
+      <br>
+      <form>
+        <label>First Name:<input type="text" id="fname" ivalue="First Name" name="FirstName"></label>
+        <label>Last Name:<input type="text" id="lname" name="LastName"></label>
+        <input type="submit" id="submit">
+      </form>
+  <script>
+    $( 'input#submit' ).click(function( event ) {
+      console.log( 'clicked', $( this ).text() );
+      clicked(event);
+    });
+    function clicked(evt) {
+      var fname = $( 'input#fname' );
+      var lname = $( 'input#lname' );
+      var client = { Firstname: fname.val(), Lastname: lname.val()}
+      
+      evt.preventDefault();
+      $.ajax({
+        method: "POST",
+        url: "/api/addclient",
+        processData: false,
+        mimeType: "application/json",
+        data: JSON.stringify(client)
+})
+  .done(function(  data, textStatus, jqXHR ) {
+    $( '#status' ).text('successly added client ' + data.Firstname + ' ' 
+      + data.Lastname);
+    $( 'input#fname' ).val('enter first name');
+    $( 'input#lname' ).val('enter last name');
+  })
+  .fail(function( jqXHR, textStatus, errorThrown ) {
+    alert( "failure: " + textStatus + ',' + errorThrown );
+  });
+    }
+  </script>
+  </body>
+</html>

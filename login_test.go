@@ -28,6 +28,7 @@ var endpoints = []EndpointTest{
     {"/api/getallclients", getallclients, http.StatusUnauthorized},
     {"/", handler, http.StatusFound},
     {"/listclients", listclients, http.StatusFound},
+    {"/newclient", newclient, http.StatusFound},
 }
 
 func TestHomePage(t *testing.T) {
@@ -112,6 +113,34 @@ func TestListClientsPage(t *testing.T) {
     }
 }
 
+func TestAddClientPage(t *testing.T) {
+    inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+    if err != nil {
+            t.Fatalf("Failed to create instance: %v", err)
+    }
+    defer inst.Close()
+
+    req, err := inst.NewRequest("GET", "/addclient", nil)
+    if err != nil {
+            t.Fatalf("Failed to create req: %v", err)
+    }
+
+    aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+    w := httptest.NewRecorder()
+    c := appengine.NewContext(req)
+
+    newclient(c, w, req)
+
+    code := w.Code
+    if code != http.StatusOK {
+        t.Errorf("got code %v, want %v", code, http.StatusOK)
+    }
+
+    //TODO: confirm response, create new req with filled-in values, submit?
+    //      Or does this call for something like Selenium?
+}
+
 func TestEndpointsNotAuthenticated(t *testing.T) {
     inst, err := aetest.NewInstance(nil)
     if err != nil {
@@ -165,8 +194,8 @@ func TestAddClient(t *testing.T) {
         t.Errorf("got code %v, want %v", code, http.StatusCreated)
     }
     body := w.Body.Bytes()
-    if !bytes.Equal(body, []byte("client ozanam, frederic added")) {
-        t.Errorf("got body %v (%v), want %v", body, string(body), []byte("client ozanam, frederic added"))
+    if !bytes.Equal(body, []byte(`{"Firstname":"frederic","Lastname":"ozanam"}`)) {
+        t.Errorf("got body %v (%v), want %v", body, string(body), []byte(`{"Firstname":"frederic","Lastname":"ozanam"}`))
     }
 
     q := datastore.NewQuery("SVDPClient")

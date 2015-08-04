@@ -4,14 +4,12 @@
 {{ template "scripts" }}
   </head>
   <body>
-<!-- TODO: template for site nav included in each page -->
+    {{ template "header" . }}
     <p>Welcome to the home page of the Conference, {{.U}}!</p>
     <br>
     Click <a href="/clients">here</a> to see a list of our clients.
     <br>
     Click <a href="/addclient">here</a> to add a client.
-    <br>
-    <a href="{{ .Logouturl }}">Logout</a>
     <br>
   </body>
 </html>

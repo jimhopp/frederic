@@ -1,8 +1,6 @@
 package frederic
 //TODO: -common web page, api auth logic
-//      -template for header on pages
 //      -figure out testing of update pages
-//      -rename files
 
 import (
     "net/http"
@@ -47,16 +45,21 @@ func handler(c appengine.Context, w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(http.StatusFound)
         return
     }
-    type homepage struct{U, Logouturl string}
     l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
-    h := homepage{u.Email, l} 
-    err := homepageTemplate.Execute(w, h)
+    data := struct {
+        U, LogoutUrl string
+    }{
+       u.Email,
+       l,
+    }
+    err := homepageTemplate.Execute(w, data)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
     }
 }
 
-var homepageTemplate = template.Must(template.ParseFiles("home.html", "scripts.html"))
+var homepageTemplate = template.Must(template.ParseFiles("home.html", 
+    "scripts.html", "header.html"))
 
 func listclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
     u := user.Current(c)
@@ -72,18 +75,29 @@ func listclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
     }
  
     q := datastore.NewQuery("SVDPClient")
-    Clients := make([]client, 0, 10)
-    if _, err := q.GetAll(c, &Clients); err != nil {
+    clients := make([]client, 0, 10)
+    if _, err := q.GetAll(c, &clients); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
-    err := clientsTemplate.Execute(w, Clients)
+
+    l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
+
+    data := struct {
+        U, LogoutUrl string
+        Clients []client
+    }{
+       u.Email,
+       l,
+       clients,
+    }
+    err := clientsTemplate.Execute(w, data)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
     }
 }
 var clientsTemplate = template.Must(template.ParseFiles("clients.html", 
-    "scripts.html"))
+    "scripts.html", "header.html"))
 
 func newclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
     u := user.Current(c)
@@ -98,10 +112,19 @@ func newclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
         return
     }
  
-    err := newClientTemplate.Execute(w, u)
+    l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
+
+    data := struct {
+        U, LogoutUrl string
+    }{
+       u.Email,
+       l,
+    }
+    err := newClientTemplate.Execute(w, data)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
     }
 }
-var newClientTemplate = template.Must(template.ParseFiles("newclient.html", "scripts.html"))
+var newClientTemplate = template.Must(template.ParseFiles("newclient.html", 
+    "scripts.html", "header.html"))
 

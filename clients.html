@@ -6,7 +6,17 @@
     <table>
       <tr><td>First Name</td><td>Last Name</td></tr>
       {{ range .Clients }}
-      <tr><td>{{ .Firstname }}</td><td>{{ .Lastname }}</td></tr>
+        <tr>
+          <td>{{ .Firstname }}</td><td>{{ .Lastname }}</td>
+        </tr>
+      {{ end }}
+    </table>
+    <table>
+      <tr><td>Key</td></tr>
+      {{ range .Keys }}
+        <tr>
+          <td><a href="/client?id={{ .IntID }}">{{ .IntID }}</a></td>
+        </tr>
       {{ end }}
     </table>
   </body>

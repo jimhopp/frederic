@@ -1,0 +1,9 @@
+<html>
+  <title>St. Vincent de Paul (St. Charles Borromeo Conference) Client</title>
+  {{ template "scripts" }}
+  <body>
+   {{ template "header" . }}
+   <p>{{ .Client.Firstname }}</p><p>{{ .Client.Lastname }}</p>
+   <p>({{ .Key }})</p>
+  </body>
+</html>

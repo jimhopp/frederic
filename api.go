@@ -1,66 +1,79 @@
 package frederic
+
 //TODO: -common web page, api auth logic
 
 import (
-    "fmt"
-    "net/http"
-    "encoding/json"
-    "log"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
 
-    "appengine"
-    "appengine/user"
-    "appengine/datastore"
+	"appengine"
+	"appengine/datastore"
+	"appengine/user"
 )
 
 func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-    u:= user.Current(c)
-    if u == nil {
-        w.WriteHeader(http.StatusUnauthorized)
-        return
-    }
+	u := user.Current(c)
+	if u == nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
-    new := &client{}
-    body := make([]byte, r.ContentLength)
-    _, err := r.Body.Read(body)
-    err = json.Unmarshal(body, new)
-    log.Printf("api/addclient: got %v\n", string(body))
-    if err != nil {
-	log.Printf("unmarshaling error:%v\n", err)
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	new := &client{}
+	body := make([]byte, r.ContentLength)
+	_, err := r.Body.Read(body)
+	err = json.Unmarshal(body, new)
+	log.Printf("api/addclient: got %v\n", string(body))
+	if err != nil {
+		log.Printf("unmarshaling error:%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    key := datastore.NewIncompleteKey(c, "SVDPClient", nil)
-    _, err = datastore.Put(c, key, new)
-    if err != nil {
-         http.Error(w, err.Error(), http.StatusInternalServerError)
-         return
-    }
+	ikey := datastore.NewIncompleteKey(c, "SVDPClient", nil)
+	key, err := datastore.Put(c, ikey, new)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    b, err := json.Marshal(new)
-    w.WriteHeader(http.StatusCreated)
-    fmt.Fprint(w, string(b))
+	newrec := &clientrec{key.IntID(),
+		client{new.Firstname, new.Lastname},
+	}
+	b, err := json.Marshal(newrec)
+	log.Printf("returning %v\n", string(b))
+	w.WriteHeader(http.StatusCreated)
+	fmt.Fprint(w, string(b))
 }
 
 func getallclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-    u:= user.Current(c)
-    if u == nil {
-        w.WriteHeader(http.StatusUnauthorized)
-        return
-    }
-    q := datastore.NewQuery("SVDPClient")
-    clients := make([]client, 0, 10)
-    if _, err := q.GetAll(c, &clients); err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    w.WriteHeader(http.StatusOK)
+	u := user.Current(c)
+	if u == nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	q := datastore.NewQuery("SVDPClient")
+	clients := make([]client, 0, 10)
+	ids, err := q.GetAll(c, &clients)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	log.Printf("getallclients: got keys %v\n", ids)
+	w.WriteHeader(http.StatusOK)
 
-    b, err := json.Marshal(clients)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    
-    fmt.Fprint(w,string(b))
+	clientrecs := make([]clientrec, len(clients))
+	for i := 0; i < len(clients); i++ {
+		clientrecs[i] = clientrec{ids[i].IntID(), client{clients[i].Firstname,
+			clients[i].Lastname}}
+	}
+	log.Printf("getallclients: clientrecs = %v\n", clientrecs)
+	b, err := json.Marshal(clientrecs)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(w, string(b))
 }

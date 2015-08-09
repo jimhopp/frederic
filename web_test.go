@@ -76,11 +76,13 @@ func TestListClientsPage(t *testing.T) {
 		{Firstname: "John", Lastname: "Doe"},
 		{Firstname: "Jane", Lastname: "Doe"},
 	}
+	ids := make([]int64, 3)
 	for i := 0; i < len(newclients); i++ {
-		_, err = addclienttodb(newclients[i], inst)
+		id, err := addclienttodb(newclients[i], inst)
 		if err != nil {
 			t.Fatalf("unable to add client: %v", err)
 		}
+		ids[i] = id
 	}
 	req, err := inst.NewRequest("GET", "/listclients", nil)
 	if err != nil {
@@ -100,10 +102,13 @@ func TestListClientsPage(t *testing.T) {
 	}
 
 	body := w.Body.Bytes()
-	rows := []string{"<td>First Name</td><td>Last Name</td>",
-		"<td>frederic</td><td>ozanam</td>",
-		"<td>John</td><td>Doe</td>",
-		"<td>Jane</td><td>Doe</td>",
+	rows := []string{"<td>Clients</td>",
+		"<td><a href=\"/client?id=" + strconv.FormatInt(ids[0], 10) +
+			"\">frederic ozanam</a></td>",
+		"<td><a href=\"/client?id=" + strconv.FormatInt(ids[1], 10) +
+			"\">John Doe</a></td>",
+		"<td><a href=\"/client?id=" + strconv.FormatInt(ids[2], 10) +
+			"\">Jane Doe</a></td>",
 	}
 	for i := 0; i < len(rows); i++ {
 		if !bytes.Contains(body, []byte(rows[i])) {

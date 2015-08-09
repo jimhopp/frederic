@@ -4,18 +4,10 @@
   <body>
    {{ template "header" . }}
     <table>
-      <tr><td>First Name</td><td>Last Name</td></tr>
+      <tr><td>Clients</td></tr>
       {{ range .Clients }}
         <tr>
-          <td>{{ .Firstname }}</td><td>{{ .Lastname }}</td>
-        </tr>
-      {{ end }}
-    </table>
-    <table>
-      <tr><td>Key</td></tr>
-      {{ range .Keys }}
-        <tr>
-          <td><a href="/client?id={{ .IntID }}">{{ .IntID }}</a></td>
+          <td><a href="/client?id={{ .Id }}">{{ .Clt.Firstname }} {{ .Clt.Lastname }}</a></td>
         </tr>
       {{ end }}
     </table>

@@ -90,17 +90,20 @@ func listclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	clientrecs := make([]clientrec, len(keys))
+        for i := 0; i < len(clients); i++ {
+		clientrecs[i].Clt = clients[i]
+		clientrecs[i].Id = keys[i].IntID()
+	}
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
 
 	data := struct {
 		U, LogoutUrl string
-		Clients      []client
-		Keys         []*datastore.Key
+		Clients      []clientrec
 	}{
 		u.Email,
 		l,
-		clients,
-		keys,
+		clientrecs,
 	}
 	err = clientsTemplate.Execute(w, data)
 	if err != nil {

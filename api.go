@@ -46,6 +46,47 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(b))
 }
 
+func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	u := user.Current(c)
+	if u == nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	cltrec := &clientrec{}
+	body := make([]byte, r.ContentLength)
+	_, err := r.Body.Read(body)
+	err = json.Unmarshal(body, cltrec)
+	c.Infof("api/editclient: got %v\n", string(body))
+	if err != nil {
+		c.Errorf("unmarshaling error:%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	clt := &client{cltrec.Clt.Firstname, cltrec.Clt.Lastname}
+	ikey := datastore.NewKey(c, "SVDPClient", "", cltrec.Id, nil)
+	key, err := datastore.Put(c, ikey, clt)
+	if err != nil {
+		c.Errorf("datastore error on Put: :%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	newrec := &clientrec{key.IntID(),
+		client{cltrec.Clt.Firstname, cltrec.Clt.Lastname},
+	}
+	b, err := json.Marshal(newrec)
+	if err != nil {
+		c.Errorf("marshaling error:%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	c.Infof("returning %v\n", string(b))
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, string(b))
+}
+
 func getallclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	u := user.Current(c)
 	if u == nil {

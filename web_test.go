@@ -20,11 +20,13 @@ type EndpointTest struct {
 
 var endpoints = []EndpointTest{
 	{"/api/addclient", addclient, http.StatusUnauthorized},
+	{"/api/editclient", editclient, http.StatusUnauthorized},
 	{"/api/getallclients", getallclients, http.StatusUnauthorized},
-	{"/", home, http.StatusFound},
-	{"/listclients", listclients, http.StatusFound},
-	{"/client", getclient, http.StatusFound},
-	{"/newclient", newclient, http.StatusFound},
+	{"/", homepage, http.StatusFound},
+	{"/listclients", listclientspage, http.StatusFound},
+	{"/client", getclientpage, http.StatusFound},
+	{"/newclient", newclientpage, http.StatusFound},
+	{"/editclient", editclientpage, http.StatusFound},
 }
 
 func TestHomePage(t *testing.T) {
@@ -44,7 +46,7 @@ func TestHomePage(t *testing.T) {
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
 
-	home(c, w, req)
+	homepage(c, w, req)
 
 	code := w.Code
 	if code != http.StatusOK {
@@ -94,7 +96,7 @@ func TestListClientsPage(t *testing.T) {
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
 
-	listclients(c, w, req)
+	listclientspage(c, w, req)
 
 	code := w.Code
 	if code != http.StatusOK {
@@ -144,7 +146,7 @@ func TestGetClientPage(t *testing.T) {
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
 
-	getclient(c, w, req)
+	getclientpage(c, w, req)
 
 	code := w.Code
 	if code != http.StatusOK {
@@ -153,7 +155,7 @@ func TestGetClientPage(t *testing.T) {
 
 	body := w.Body.Bytes()
 	rows := []string{"<p>frederic</p><p>ozanam</p>",
-		"<p>(" + sid + ")</p>",
+		"<a href=\"/editclient?id=" + sid + "\">(edit)</a>",
 	}
 	for i := 0; i < len(rows); i++ {
 		if !bytes.Contains(body, []byte(rows[i])) {
@@ -180,7 +182,7 @@ func TestGetClientNotFound(t *testing.T) {
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
 
-	getclient(c, w, req)
+	getclientpage(c, w, req)
 
 	code := w.Code
 	if code != http.StatusNotFound {
@@ -212,7 +214,7 @@ func TestGetClientMissingParm(t *testing.T) {
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
 
-	getclient(c, w, req)
+	getclientpage(c, w, req)
 
 	code := w.Code
 	if code != http.StatusNotFound {
@@ -223,6 +225,51 @@ func TestGetClientMissingParm(t *testing.T) {
 	msg := []byte("id parm missing or mis-formed")
 	if !bytes.Contains(body, msg) {
 		t.Errorf("got body %v, did not contain %v", string(body), msg)
+	}
+}
+
+func TestEditClientPage(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+
+	id, err := addclienttodb(newclient, inst)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	sid := strconv.FormatInt(id, 10)
+
+	url := "/editclient?id=" + sid
+	req, err := inst.NewRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+
+	editclientpage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	body := w.Body.Bytes()
+	rows := []string{`value="frederic"`,
+		`value="ozanam"`,
+	}
+	for i := 0; i < len(rows); i++ {
+		if !bytes.Contains(body, []byte(rows[i])) {
+			t.Errorf("got body %v, did not contain %v", string(body), rows[i])
+		}
 	}
 }
 
@@ -243,7 +290,7 @@ func TestAddClientPage(t *testing.T) {
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
 
-	newclient(c, w, req)
+	newclientpage(c, w, req)
 
 	code := w.Code
 	if code != http.StatusOK {

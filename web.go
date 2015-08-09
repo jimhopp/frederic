@@ -33,15 +33,17 @@ func (f ContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func init() {
-	http.Handle("/", ContextHandler{home})
-	http.Handle("/clients", ContextHandler{listclients})
-	http.Handle("/client", ContextHandler{getclient})
-	http.Handle("/addclient", ContextHandler{newclient})
+	http.Handle("/", ContextHandler{homepage})
+	http.Handle("/clients", ContextHandler{listclientspage})
+	http.Handle("/client", ContextHandler{getclientpage})
+	http.Handle("/editclient", ContextHandler{editclientpage})
+	http.Handle("/addclient", ContextHandler{newclientpage})
 	http.Handle("/api/addclient", ContextHandler{addclient})
+	http.Handle("/api/editclient", ContextHandler{editclient})
 	http.Handle("/api/getallclients", ContextHandler{getallclients})
 }
 
-func home(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func homepage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	u := user.Current(c)
 	if u == nil {
 		url, err := user.LoginURL(c, r.URL.String())
@@ -69,7 +71,7 @@ func home(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 var homepageTemplate = template.Must(template.ParseFiles("home.html",
 	"scripts.html", "header.html"))
 
-func listclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func listclientspage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	u := user.Current(c)
 	if u == nil {
 		url, err := user.LoginURL(c, r.URL.String())
@@ -91,7 +93,7 @@ func listclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	clientrecs := make([]clientrec, len(keys))
-        for i := 0; i < len(clients); i++ {
+	for i := 0; i < len(clients); i++ {
 		clientrecs[i].Clt = clients[i]
 		clientrecs[i].Id = keys[i].IntID()
 	}
@@ -114,7 +116,7 @@ func listclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 var clientsTemplate = template.Must(template.ParseFiles("clients.html",
 	"scripts.html", "header.html"))
 
-func getclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	u := user.Current(c)
 	if u == nil {
 		url, err := user.LoginURL(c, r.URL.String())
@@ -155,13 +157,13 @@ func getclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		U, LogoutUrl string
-		Client       client
-		Key          int64
+		Clientrec    clientrec
 	}{
 		u.Email,
 		l,
-		clt,
-		key.IntID(),
+		clientrec{id,
+			client{clt.Firstname, clt.Lastname},
+		},
 	}
 	err = clientTemplate.Execute(w, data)
 	if err != nil {
@@ -172,7 +174,7 @@ func getclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 var clientTemplate = template.Must(template.ParseFiles("client.html",
 	"scripts.html", "header.html"))
 
-func newclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func newclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	u := user.Current(c)
 	if u == nil {
 		url, err := user.LoginURL(c, r.URL.String())
@@ -197,8 +199,65 @@ func newclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	w.WriteHeader(http.StatusFound)
 }
 
 var newClientTemplate = template.Must(template.ParseFiles("newclient.html",
+	"scripts.html", "header.html"))
+
+func editclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	u := user.Current(c)
+	if u == nil {
+		url, err := user.LoginURL(c, r.URL.String())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Location", url)
+		w.WriteHeader(http.StatusFound)
+		return
+	}
+
+	query := r.URL.Query()
+	ids, ok := query["id"]
+	if !ok {
+		http.Error(w, "id parm missing or mis-formed",
+			http.StatusNotFound)
+		return
+	}
+	id, err := strconv.ParseInt(ids[0], 10, 64)
+	if err != nil {
+		c.Warningf("got error %v trying to parse id %v\n", err, id)
+		http.Error(w, "unable to find client", http.StatusNotFound)
+		return
+	}
+	key := datastore.NewKey(c, "SVDPClient", "", id, nil)
+	var clt client
+	err = datastore.Get(c, key, &clt)
+	if err != nil {
+		c.Warningf("got error %v on datastore get for key %v\n", err,
+			key)
+		http.Error(w, "unable to find client",
+			http.StatusNotFound)
+		return
+	}
+	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
+
+	data := struct {
+		U, LogoutUrl string
+		Client       clientrec
+	}{
+		u.Email,
+		l,
+		clientrec{id,
+			client{clt.Firstname, clt.Lastname},
+		},
+	}
+	err = editClientTemplate.Execute(w, data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	w.WriteHeader(http.StatusFound)
+}
+
+var editClientTemplate = template.Must(template.ParseFiles("editclient.html",
 	"scripts.html", "header.html"))

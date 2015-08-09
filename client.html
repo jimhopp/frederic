@@ -3,7 +3,7 @@
   {{ template "scripts" }}
   <body>
    {{ template "header" . }}
-   <p>{{ .Client.Firstname }}</p><p>{{ .Client.Lastname }}</p>
-   <p>({{ .Key }})</p>
+   <p>{{ .Clientrec.Clt.Firstname }}</p><p>{{ .Clientrec.Clt.Lastname }}</p>
+   <a href="/editclient?id={{ .Clientrec.Id }}">(edit)</a>
   </body>
 </html>

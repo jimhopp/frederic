@@ -1,0 +1,41 @@
+<html>
+  <title>St. Vincent de Paul (St. Charles Borromeo Conference) Update Client</title>
+{{ template "scripts" }}
+  <body>
+      {{ template "header" . }}
+      <p id="status">Empty status</p>
+      <br>
+      <form>
+        <label>First Name:<input type="text" id="fname" value="{{ .Client.Clt.Firstname }}" name="FirstName"></label>
+        <label>Last Name:<input type="text" id="lname" value="{{ .Client.Clt.Lastname }}" name="LastName"></label>
+        <input type="submit" id="submit">
+      </form>
+  <script>
+    $( 'input#submit' ).click(function( event ) {
+      console.log( 'clicked', $( this ).text() );
+      clicked(event);
+    });
+    function clicked(evt) {
+      var fname = $( 'input#fname' );
+      var lname = $( 'input#lname' );
+      var client = { Id: {{ .Client.Id }}, Clt: {Firstname: fname.val(), Lastname: lname.val()}}
+      
+      evt.preventDefault();
+      $.ajax({
+        method: "POST",
+        url: "/api/editclient",
+        processData: false,
+        mimeType: "application/json",
+        data: JSON.stringify(client)
+})
+  .done(function(  data, textStatus, jqXHR ) {
+    $( '#status' ).text('successly updated client ' + data.Clt.Firstname + ' ' 
+      + data.Clt.Lastname);
+  })
+  .fail(function( jqXHR, textStatus, errorThrown ) {
+    alert( "failure: " + textStatus + ',' + errorThrown );
+  });
+    }
+  </script>
+  </body>
+</html>

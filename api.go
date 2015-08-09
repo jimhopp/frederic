@@ -5,7 +5,6 @@ package frederic
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"appengine"
@@ -24,9 +23,9 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	body := make([]byte, r.ContentLength)
 	_, err := r.Body.Read(body)
 	err = json.Unmarshal(body, new)
-	log.Printf("api/addclient: got %v\n", string(body))
+	c.Infof("api/addclient: got %v\n", string(body))
 	if err != nil {
-		log.Printf("unmarshaling error:%v\n", err)
+		c.Errorf("unmarshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -42,7 +41,7 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		client{new.Firstname, new.Lastname},
 	}
 	b, err := json.Marshal(newrec)
-	log.Printf("returning %v\n", string(b))
+	c.Infof("returning %v\n", string(b))
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprint(w, string(b))
 }
@@ -60,7 +59,7 @@ func getallclients(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Printf("getallclients: got keys %v\n", ids)
+	c.Debugf("getallclients: got keys %v\n", ids)
 	w.WriteHeader(http.StatusOK)
 
 	clientrecs := make([]clientrec, len(clients))
@@ -68,7 +67,7 @@ func getallclients(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 		clientrecs[i] = clientrec{ids[i].IntID(), client{clients[i].Firstname,
 			clients[i].Lastname}}
 	}
-	log.Printf("getallclients: clientrecs = %v\n", clientrecs)
+	c.Debugf("getallclients: clientrecs = %v\n", clientrecs)
 	b, err := json.Marshal(clientrecs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

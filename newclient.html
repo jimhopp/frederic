@@ -29,8 +29,8 @@
         data: JSON.stringify(client)
 })
   .done(function(  data, textStatus, jqXHR ) {
-    $( '#status' ).text('successly added client ' + data.Firstname + ' ' 
-      + data.Lastname);
+    $( '#status' ).text('successly added client ' + data.Clt.Firstname + ' ' 
+      + data.Clt.Lastname);
     $( 'input#fname' ).val('enter first name');
     $( 'input#lname' ).val('enter last name');
   })

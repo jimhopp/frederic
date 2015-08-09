@@ -194,6 +194,7 @@ func newclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	w.WriteHeader(http.StatusFound)
 }
 
 var newClientTemplate = template.Must(template.ParseFiles("newclient.html",

@@ -105,12 +105,12 @@ func TestListClientsPage(t *testing.T) {
 
 	body := w.Body.Bytes()
 	rows := []string{"<td>Clients</td>",
-		"<td><a href=\"/client?id=" + strconv.FormatInt(ids[0], 10) +
-			"\">frederic ozanam</a></td>",
-		"<td><a href=\"/client?id=" + strconv.FormatInt(ids[1], 10) +
-			"\">John Doe</a></td>",
-		"<td><a href=\"/client?id=" + strconv.FormatInt(ids[2], 10) +
-			"\">Jane Doe</a></td>",
+		"<a href=\"/client?id=" + strconv.FormatInt(ids[0], 10) +
+			"\">frederic ozanam</a>",
+		"<a href=\"/client?id=" + strconv.FormatInt(ids[1], 10) +
+			"\">John Doe</a>",
+		"<a href=\"/client?id=" + strconv.FormatInt(ids[2], 10) +
+			"\">Jane Doe</a>",
 	}
 	for i := 0; i < len(rows); i++ {
 		if !bytes.Contains(body, []byte(rows[i])) {
@@ -154,7 +154,8 @@ func TestGetClientPage(t *testing.T) {
 	}
 
 	body := w.Body.Bytes()
-	rows := []string{"<p>frederic</p><p>ozanam</p>",
+	rows := []string{`value="frederic"`,
+		`value="ozanam"`,
 		"<a href=\"/editclient?id=" + sid + "\">(edit)</a>",
 	}
 	for i := 0; i < len(rows); i++ {

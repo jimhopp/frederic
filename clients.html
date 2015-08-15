@@ -5,9 +5,9 @@
    {{ template "header" . }}
     <table>
       <tr><td>Clients</td></tr>
-      {{ range .Clients }}
+      {{ range $i, $clt := .Clients }}
         <tr>
-          <td><a href="/client?id={{ .Id }}">{{ .Clt.Firstname }} {{ .Clt.Lastname }}</a></td>
+          <td>{{ $i }}.<a href="/client?id={{ .Id }}">{{ .Clt.Firstname }} {{ .Clt.Lastname }}</a></td>
         </tr>
       {{ end }}
     </table>

@@ -11,6 +11,8 @@
         <input type="submit" id="submit">
       </form>
   <script>
+  $( document ).ready(function() {
+    console.log( 'ready!' );
     $( 'input#submit' ).click(function( event ) {
       console.log( 'clicked', $( this ).text() );
       clicked(event);
@@ -29,7 +31,7 @@
         data: JSON.stringify(client)
 })
   .done(function(  data, textStatus, jqXHR ) {
-    $( '#status' ).text('successly added client ' + data.Clt.Firstname + ' ' 
+    $( '#status' ).text('successfully added client ' + data.Clt.Firstname + ' ' 
       + data.Clt.Lastname);
     $( 'input#fname' ).val('enter first name');
     $( 'input#lname' ).val('enter last name');
@@ -38,6 +40,7 @@
     alert( "failure: " + textStatus + ',' + errorThrown );
   });
     }
+  });
   </script>
   </body>
 </html>

@@ -3,7 +3,27 @@
   {{ template "scripts" }}
   <body>
    {{ template "header" . }}
-   <p>{{ .Clientrec.Clt.Firstname }}</p><p>{{ .Clientrec.Clt.Lastname }}</p>
+        <label>First Name:<input type="text" id="fname" value="{{ .Clientrec.Clt.Firstname }}" name="FirstName" disabled=true></label>
+        <label>Last Name:<input type="text" id="lname" value="{{ .Clientrec.Clt.Lastname }}" name="LastName" disabled=true></label>
+        <label>DOB:<input type="date" id="dob" value="{{ .Clientrec.Clt.DOB }}" name="dob" disabled=true></label>
+        <br>
+         <label>Address:<input type="text" id="address" value="{{ .Clientrec.Clt.Address }}" name="Address" disabled=true></label>
+         <label>Apt:<input type="text" id="apt" value="{{ .Clientrec.Clt.Apt }}" name="apt" disabled=true></label>
+         <label>Phone:<input type="text" id="phnum" value="{{ .Clientrec.Clt.Phonenum }}" name="phnum" disabled=true></label>
+        <br>
+        <p>Family Members</p>
+        <table>
+          <thead>
+            <td>Name</td><td>DOB</td><td>Gender</td>
+          </thead>
+            {{ range $i, $fammbr := .Clientrec.Clt.Fammbrs }}
+              <tr>
+                <td><input type="text" id="fammbrnm{{ $i }}" name="fammbrnm{{ $i }}" value="{{ .Name }}"></td>
+                <td><input type="text" id="fammbrdob{{ $i }}" name="fammbrdob{{ $i }}" value="{{ .DOB }}"></td>
+                <td><label>Male<input type="radio" name="fammbrgender{{ $i }}" id="fammbrmale{{ $i }}" value="Male" {{if not .Female }}checked="checked"{{end}}></label><label>Female<input type="radio" id="fammbrfemale{{ $i }}" name="fammbrgender{{ $i }}" value="Female" {{ if .Female }}checked="checked"{{end}}></label></td>
+              </tr>
+            {{ end }}
+        </table>  
    <a href="/editclient?id={{ .Clientrec.Id }}">(edit)</a>
   </body>
 </html>

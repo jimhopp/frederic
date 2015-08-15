@@ -20,6 +20,17 @@ type ContextHandler struct {
 type client struct {
 	Firstname string
 	Lastname  string
+	Address   string
+	Apt       string
+	DOB       string
+	Phonenum  string
+	Fammbrs   []fammbr
+}
+
+type fammbr struct {
+	Name   string
+	DOB    string
+	Female bool
 }
 
 type clientrec struct {
@@ -161,9 +172,7 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	}{
 		u.Email,
 		l,
-		clientrec{id,
-			client{clt.Firstname, clt.Lastname},
-		},
+		clientrec{id, clt},
 	}
 	err = clientTemplate.Execute(w, data)
 	if err != nil {
@@ -244,19 +253,16 @@ func editclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request)
 
 	data := struct {
 		U, LogoutUrl string
-		Client       clientrec
+		Clientrec    clientrec
 	}{
 		u.Email,
 		l,
-		clientrec{id,
-			client{clt.Firstname, clt.Lastname},
-		},
+		clientrec{id, clt},
 	}
 	err = editClientTemplate.Execute(w, data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	w.WriteHeader(http.StatusFound)
 }
 
 var editClientTemplate = template.Must(template.ParseFiles("editclient.html",

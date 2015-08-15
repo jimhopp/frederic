@@ -26,7 +26,7 @@ func TestAddClient(t *testing.T) {
 	}
 	defer inst.Close()
 
-	data := strings.NewReader(`{"Firstname": "frederic", "Lastname": "ozanam"}`)
+	data := strings.NewReader(`{"Firstname": "frederic", "Lastname": "ozanam","Address":"123 Easy St","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212"}`)
 	req, err := inst.NewRequest("PUT", "/api/addclient", data)
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
@@ -47,8 +47,10 @@ func TestAddClient(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body := w.Body.Bytes()
-	if !bytes.Contains(body, []byte(`{"Firstname":"frederic","Lastname":"ozanam"}`)) {
-		t.Errorf("got body %v (%v), want %v", body, string(body), []byte(`{"Firstname":"frederic","Lastname":"ozanam"}`))
+	expected := []byte(`{"Firstname":"frederic","Lastname":"ozanam","Address":"123 Easy St","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Fammbrs":null}`)
+	if !bytes.Contains(body, expected) {
+		t.Errorf("got body %v (%v), want %v", body, string(body),
+			expected)
 	}
 
 	q := datastore.NewQuery("SVDPClient")
@@ -160,8 +162,10 @@ func TestUpdateClient(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body := w.Body.Bytes()
-	if !bytes.Contains(body, []byte(`{"Firstname":"Frederic","Lastname":"Ozanam"}`)) {
-		t.Errorf("got body %v (%v), want %v", body, string(body), []byte(`{"Firstname":"frederic","Lastname":"ozanam"}`))
+	expected := []byte(`{"Firstname":"Frederic","Lastname":"Ozanam","Address":"","Apt":"","DOB":"","Phonenum":"","Fammbrs":null}`)
+	if !bytes.Contains(body, expected) {
+		t.Errorf("got body %v (%v), want %v", body, string(body),
+			expected)
 	}
 
 	key := datastore.NewKey(c, "SVDPClient", "", id, nil)
@@ -170,11 +174,51 @@ func TestUpdateClient(t *testing.T) {
 		t.Fatalf("error on Get: %v", err)
 		return
 	}
-	expected := &client{"Frederic", "Ozanam"}
-	if reflect.DeepEqual(clt, expected) {
-		t.Errorf("db record shows %v, want %v", clt, expected)
+	expectedc := &client{}
+	expectedc.Firstname = "Frederic"
+	expectedc.Lastname = "Ozanam"
+	if reflect.DeepEqual(clt, expectedc) {
+		t.Errorf("db record shows %v, want %v", clt, expectedc)
 	}
 }
+
+func TestUpdateErrorClient(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	id, err := addclienttodb(newclient, inst)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	data := strings.NewReader(`{"Id": ` + strconv.FormatInt(id, 10) +
+		`, "Clt": {"Firstname": "Frederic", "Lastname": "Ozanam", "DOB":"alphabet"}}`)
+	req, err := inst.NewRequest("POST", "/api/editclient", data)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+
+	editclient(c, w, req)
+
+	code := w.Code
+	if code != http.StatusInternalServerError {
+		t.Errorf("got code %v, want %v", code, http.StatusInternalServerError)
+	}
+}
+
 func addclienttodb(clt client, inst aetest.Instance) (id int64, err error) {
 	data, err := json.Marshal(clt)
 	if err != nil {

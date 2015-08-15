@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"appengine"
 	"appengine/datastore"
@@ -38,7 +39,8 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	newrec := &clientrec{key.IntID(),
-		client{new.Firstname, new.Lastname},
+		client{new.Firstname, new.Lastname, new.Address, new.Apt,
+			new.DOB, new.Phonenum, new.Fammbrs},
 	}
 	b, err := json.Marshal(newrec)
 	c.Infof("returning %v\n", string(b))
@@ -64,7 +66,17 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clt := &client{cltrec.Clt.Firstname, cltrec.Clt.Lastname}
+	if len(cltrec.Clt.DOB) > 0 {
+		if _, err = time.Parse("2006-01-02", cltrec.Clt.DOB); err != nil {
+			c.Errorf("unable to parse DOB %v, err %v",
+				cltrec.Clt.DOB, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	clt := &client{cltrec.Clt.Firstname, cltrec.Clt.Lastname,
+		cltrec.Clt.Address, cltrec.Clt.Apt, cltrec.Clt.DOB,
+		cltrec.Clt.Phonenum, cltrec.Clt.Fammbrs}
 	ikey := datastore.NewKey(c, "SVDPClient", "", cltrec.Id, nil)
 	key, err := datastore.Put(c, ikey, clt)
 	if err != nil {
@@ -74,7 +86,9 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	newrec := &clientrec{key.IntID(),
-		client{cltrec.Clt.Firstname, cltrec.Clt.Lastname},
+		client{cltrec.Clt.Firstname, cltrec.Clt.Lastname,
+			cltrec.Clt.Address, cltrec.Clt.Apt, cltrec.Clt.DOB,
+			cltrec.Clt.Phonenum, cltrec.Clt.Fammbrs},
 	}
 	b, err := json.Marshal(newrec)
 	if err != nil {
@@ -106,7 +120,9 @@ func getallclients(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	clientrecs := make([]clientrec, len(clients))
 	for i := 0; i < len(clients); i++ {
 		clientrecs[i] = clientrec{ids[i].IntID(), client{clients[i].Firstname,
-			clients[i].Lastname}}
+			clients[i].Lastname, clients[i].Address,
+			clients[i].Apt, clients[i].DOB, clients[i].Phonenum,
+			clients[i].Fammbrs}}
 	}
 	c.Debugf("getallclients: clientrecs = %v\n", clientrecs)
 	b, err := json.Marshal(clientrecs)

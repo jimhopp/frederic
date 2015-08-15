@@ -6,20 +6,88 @@
       <p id="status">Empty status</p>
       <br>
       <form>
-        <label>First Name:<input type="text" id="fname" value="{{ .Client.Clt.Firstname }}" name="FirstName"></label>
-        <label>Last Name:<input type="text" id="lname" value="{{ .Client.Clt.Lastname }}" name="LastName"></label>
+        <label>First Name:<input type="text" id="fname" value="{{ .Clientrec.Clt.Firstname }}" name="FirstName"></label>
+        <label>Last Name:<input type="text" id="lname" value="{{ .Clientrec.Clt.Lastname }}" name="LastName"></label>
+        <label>DOB:<input type="date" id="dob" value="{{ .Clientrec.Clt.DOB }}" name="dob"></label>
+	<br>
+         <label>Address:<input type="text" id="address" value="{{ .Clientrec.Clt.Address }}" name="Address"></label>
+         <label>Apt:<input type="text" id="apt" value="{{ .Clientrec.Clt.Apt }}" name="apt"></label>
+         <label>Phone:<input type="text" id="phonenum" value="{{ .Clientrec.Clt.Phonenum }}" name="phonenum"></label>
+	<br>
+	<table>
+	  <thead>
+	    <td>Name</td><td>DOB</td><td>Gender</td><td><Remove></td>
+	  </thead>
+          <tbody id="addlfammbrs">
+	    {{ range $i, $fammbr := .Clientrec.Clt.Fammbrs }}
+	      <tr>
+	        <td><input type="text" id="fammbrnm{{ $i }}" name="fammbrnm{{ $i }}" value="{{ .Name }}"></td>
+	        <td><input type="date" id="fammbrdob{{ $i }}" name="fammbrdob{{ $i }}" value="{{ .DOB }}"></td>
+	        <td><label>Male<input type="radio" name="fammbrgender{{ $i }}" id="fammbrmale{{ $i }}" value="Male" {{ if not .Female }}checked="checked"{{end}}></label><label>Female<input type="radio" id="fammbrfemale{{ $i }}" name="fammbrgender{{ $i }}" value="Female" {{if .Female}}checked="checked"{{end}}></label></td>
+                <td><input type="button" name="rmfammbr" id="rmfammbr{{ $i }}" value="Remove"></td>
+              </tr>
+	    {{ else }} 
+	      <tr>
+	        <td><input type="text" id="fammbrnm0" name="fammbrnm0" value=""></td>
+	        <td><input type="date" id="fammbrdob0" name="fammbrdob0" value=""></td>
+	        <td><label>Male<input type="radio" name="fammbrgender0" id="fammbrmale0" value="Male" checked=""></label><label>Female<input type="radio" id="fammbrfemale0" name="fammbrgender0" value="Female" checked="true"></label></td>
+                <td><input type="button" name="rmfammbr" id="rmfammbr0" value="Remove"></td>
+	      </tr>
+	      <tr>
+	        <td><input type="text" id="fammbrnm1" name="fammbrnm1" value=""></td>
+	        <td><input type="date" id="fammbrdob1" name="fammbrdob1" value=""></td>
+	        <td><label>Male<input type="radio" name="fammbrgender1" id="fammbrmale1" value="Male" checked=""></label><label>Female<input type="radio" id="fammbrfemale1" name="fammbrgender1" value="Female" checked="true"></label></td>
+                <td><input type="button" name="rmfammbr" id="rmfammbr1" value="Remove"></td>
+	      </tr>
+            {{ end }}
+            <tr><td colspan="4" class><input type="button" id="addfammbr" value="Add"></td></tr>
+       </tbody>
+	</table>
         <input type="submit" id="submit">
       </form>
   <script>
-    $( 'input#submit' ).click(function( event ) {
-      console.log( 'clicked', $( this ).text() );
-      clicked(event);
-    });
-    function clicked(evt) {
+   $( document ).ready(function() {
+    console.log( 'ready!' );
+
+    var clickedrm = function(evt) {
+      var row = $( evt.target ).parentsUntil('tbody', 'tr');
+      console.log('clickedrm row=', row);
+      row.remove();
+    }
+
+    var clickedsubmit = function(evt) {
       var fname = $( 'input#fname' );
       var lname = $( 'input#lname' );
-      var client = { Id: {{ .Client.Id }}, Clt: {Firstname: fname.val(), Lastname: lname.val()}}
-      
+      var address = $( 'input#address' );
+      var apt = $( 'input#apt' );
+      var dob = $( 'input#dob' );
+      var phnum = $( 'input#phonenum' );
+
+      var client = { Id: {{ .Clientrec.Id }}, Clt: {Firstname: fname.val(), Lastname: lname.val(), Address: address.val(), Apt: apt.val(), DOB: dob.val(),
+        PhoneNum: phnum.val(), Fammbrs: []}}
+      var morembrs = true;
+      var i = 0;
+      while (morembrs) {
+        var nm = $( 'input#fammbrnm' + i );
+        if (nm.length) {
+          client.Clt.Fammbrs[i] = new Object();   
+          client.Clt.Fammbrs[i].Name = nm.val();   
+	} else {
+          morembrs = false;
+          continue;
+        }
+        var fdob = $( 'input#fammbrdob' + i );
+        if (nm.val() == 0) {i++;continue};
+        var ffml = $( 'input#fammbrfemale' + i );
+        if (fdob.length) {
+          client.Clt.Fammbrs[i].DOB = fdob.val();   
+	}
+        if (ffml.length) {
+          client.Clt.Fammbrs[i].Female = ffml[0].checked;
+        }
+        i++;
+      }
+
       evt.preventDefault();
       $.ajax({
         method: "POST",
@@ -29,13 +97,40 @@
         data: JSON.stringify(client)
 })
   .done(function(  data, textStatus, jqXHR ) {
-    $( '#status' ).text('successly updated client ' + data.Clt.Firstname + ' ' 
+    $( '#status' ).text('successfully updated client ' + data.Clt.Firstname + ' ' 
       + data.Clt.Lastname);
   })
   .fail(function( jqXHR, textStatus, errorThrown ) {
     alert( "failure: " + textStatus + ',' + errorThrown );
   });
     }
+
+    var clickedadd = function(evt) {
+      evt.preventDefault();
+      console.log('clickedadd');
+      var rows = $( '#addlfammbrs tr' );
+      var newrownum = rows.length -1;
+      var newrow = $( '<tr><td><input type="text" id="fammbrnm' + newrownum + 
+        '" name="fammbrnm' + newrownum + '" value=""></td>' +
+        '<td><input type="date" id="fammbrdob' + newrownum + 
+        '" name="fammbrdob' + newrownum + '" value=""></td>' +
+        '<td><label>Male<input type="radio" name="fammbrgender' + newrownum +
+        '" id="fammbrmale' + newrownum + '" value="Male"' +
+        'checked=""></label><label>Female<input type="radio" ' +
+        'id="fammbrfemale' + newrownum + '" name="fammbrgender' + newrownum +
+        '" value="Female" checked="checked"></label></td></tr>');
+      var rm = $( '<input type="button" name="rmfammbr" value="Remove">' );
+      rm.on('click', clickedrm);
+      var rmcl = $( '<td></td>' ).append(rm);
+      newrow.append(rmcl);
+      rows.last().before(newrow);
+    }
+
+    $( 'input#submit' ).on('click', clickedsubmit);
+    $( 'input#addfammbr' ).on('click', clickedadd);
+    $( 'input[name="rmfammbr"' ).on('click', clickedrm);
+
+      });
   </script>
   </body>
 </html>

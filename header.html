@@ -1,11 +1,13 @@
 {{ define "header" }}
 <!-- header include -->
+<div class="header">
   <table>
     <tr>
-      <td><a href="/">Home</a></td>
-      <td><a href="/addclient">Add a Client</a></td>
-      <td><a href="/clients">See All Clients</a></td>
-      <td><a href="{{ .LogoutUrl }}">Logout</a></td>
+      <td class="nav"><a href="/"><img src="/images/svdp-logo.png"></a></td>
+      <td class="nav"><a href="/addclient">Add a Client</a></td>
+      <td class="nav"><a href="/clients">See All Clients</a></td>
+      <td class="nav"><a href="{{ .LogoutUrl }}">Logout</a> ({{ .U }})</td>
     </tr>
   </table>
+</div>
 {{ end }}

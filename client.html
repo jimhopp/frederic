@@ -1,7 +1,7 @@
 <html>
   <title>St. Vincent de Paul (St. Charles Borromeo Conference) Client</title>
   {{ template "scripts" }}
-  <body>
+  <body class="main">
    {{ template "header" . }}
         <label>First Name:<input type="text" id="fname" value="{{ .Clientrec.Clt.Firstname }}" name="FirstName" disabled=true></label>
         <label>Last Name:<input type="text" id="lname" value="{{ .Clientrec.Clt.Lastname }}" name="LastName" disabled=true></label>

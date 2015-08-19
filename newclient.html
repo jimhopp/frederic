@@ -1,9 +1,9 @@
 <html>
   <title>St. Vincent de Paul (St. Charles Borromeo Conference) New Client</title>
 {{ template "scripts" }}
-  <body>
+  <body class="main">
       {{ template "header" . }}
-      <p id="status">Empty status</p>
+      <p id="status" class="hidden">Empty status</p>
       <br>
       <form>
         <label>First Name:<input type="text" id="fname" ivalue="First Name" name="FirstName"></label>
@@ -32,7 +32,7 @@
 })
   .done(function(  data, textStatus, jqXHR ) {
     $( '#status' ).text('successfully added client ' + data.Clt.Firstname + ' ' 
-      + data.Clt.Lastname);
+      + data.Clt.Lastname).removeClass('hidden');
     $( 'input#fname' ).val('enter first name');
     $( 'input#lname' ).val('enter last name');
   })

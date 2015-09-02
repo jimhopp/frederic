@@ -19,8 +19,8 @@ type EndpointTest struct {
 }
 
 var endpoints = []EndpointTest{
-	{"/api/addclient", addclient, http.StatusUnauthorized},
-	{"/api/editclient", editclient, http.StatusUnauthorized},
+	{"/api/client", addclient, http.StatusUnauthorized},
+	{"/api/client/", editclient, http.StatusUnauthorized},
 	{"/api/getallclients", getallclients, http.StatusUnauthorized},
 	{"/", homepage, http.StatusFound},
 	{"/listclients", listclientspage, http.StatusFound},
@@ -54,12 +54,10 @@ func TestHomePage(t *testing.T) {
 	}
 
 	body := w.Body.Bytes()
-	if !bytes.Contains(body,
-		[]byte("Welcome to the home page of the Conference, test@example.org!")) {
-		t.Errorf("got body %v, did not contain %v", body,
-			[]byte("Welcome to the home page of the Conference, test@example.org"))
+	expected := []byte("Welcome to the home page of the St. Charles Borromeo Conference, test@example.org!")
+	if !bytes.Contains(body, expected) {
+		t.Errorf("got body %v, did not contain %v", body, expected)
 	}
-
 	if !bytes.Contains(body, []byte("Logout")) {
 		t.Errorf("got body %v, did not contain %v", body,
 			[]byte("Logout"))
@@ -266,6 +264,8 @@ func TestEditClientPage(t *testing.T) {
 	body := w.Body.Bytes()
 	rows := []string{`value="frederic"`,
 		`value="ozanam"`,
+		`method: "PUT"`,
+		`url: "/api/client/` + sid + `"`,
 	}
 	for i := 0; i < len(rows); i++ {
 		if !bytes.Contains(body, []byte(rows[i])) {
@@ -298,6 +298,15 @@ func TestAddClientPage(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusOK)
 	}
 
+	body := w.Body.Bytes()
+	rows := []string{`method: "POST"`,
+		`url: "/api/client"`,
+	}
+	for i := 0; i < len(rows); i++ {
+		if !bytes.Contains(body, []byte(rows[i])) {
+			t.Errorf("got body %v, did not contain %v", string(body), rows[i])
+		}
+	}
 	//TODO: confirm response, create new req with filled-in values, submit?
 	//      Or does this call for something like Selenium?
 }

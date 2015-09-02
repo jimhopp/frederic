@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strconv"
 	"time"
 
 	"appengine"
@@ -24,7 +26,7 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	body := make([]byte, r.ContentLength)
 	_, err := r.Body.Read(body)
 	err = json.Unmarshal(body, new)
-	c.Infof("api/addclient: got %v\n", string(body))
+	c.Infof("addclient: got %v\n", string(body))
 	if err != nil {
 		c.Errorf("unmarshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -40,7 +42,8 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 
 	newrec := &clientrec{key.IntID(),
 		client{new.Firstname, new.Lastname, new.Address, new.Apt,
-			new.DOB, new.Phonenum, new.Fammbrs},
+			new.DOB, new.Phonenum, new.Addlmales, new.Addlfemales,
+			new.Fammbrs, new.Financials},
 	}
 	b, err := json.Marshal(newrec)
 	c.Infof("returning %v\n", string(b))
@@ -55,10 +58,10 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cltrec := &clientrec{}
+	clt := &client{}
 	body := make([]byte, r.ContentLength)
 	_, err := r.Body.Read(body)
-	err = json.Unmarshal(body, cltrec)
+	err = json.Unmarshal(body, clt)
 	c.Infof("api/editclient: got %v\n", string(body))
 	if err != nil {
 		c.Errorf("unmarshaling error:%v\n", err)
@@ -66,18 +69,38 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(cltrec.Clt.DOB) > 0 {
-		if _, err = time.Parse("2006-01-02", cltrec.Clt.DOB); err != nil {
+	re, err := regexp.Compile("[0-9]+")
+	idstr := re.FindString(r.URL.Path)
+	c.Debugf("parsed id %v from %v", idstr, r.URL.Path)
+
+	if idstr == "" {
+		c.Errorf("id is missing for update request: path %v, data %v",
+			r.URL.Path, string(body))
+		http.Error(w,
+			fmt.Sprintf("id is missing in path for update request %v", string(body)),
+			http.StatusBadRequest)
+		return
+	}
+
+	id, err := strconv.ParseInt(idstr, 10, 64)
+	if err != nil {
+		c.Errorf("unable to parse id %v as int64: %v", id, err.Error())
+		http.Error(w,
+			fmt.Sprintf("unable to parse id %v as int64: %v", id,
+				err.Error()),
+			http.StatusBadRequest)
+		return
+	}
+
+	if len(clt.DOB) > 0 {
+		if _, err = time.Parse("2006-01-02", clt.DOB); err != nil {
 			c.Errorf("unable to parse DOB %v, err %v",
-				cltrec.Clt.DOB, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+				clt.DOB, err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	}
-	clt := &client{cltrec.Clt.Firstname, cltrec.Clt.Lastname,
-		cltrec.Clt.Address, cltrec.Clt.Apt, cltrec.Clt.DOB,
-		cltrec.Clt.Phonenum, cltrec.Clt.Fammbrs}
-	ikey := datastore.NewKey(c, "SVDPClient", "", cltrec.Id, nil)
+	ikey := datastore.NewKey(c, "SVDPClient", "", id, nil)
 	key, err := datastore.Put(c, ikey, clt)
 	if err != nil {
 		c.Errorf("datastore error on Put: :%v\n", err)
@@ -85,11 +108,8 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newrec := &clientrec{key.IntID(),
-		client{cltrec.Clt.Firstname, cltrec.Clt.Lastname,
-			cltrec.Clt.Address, cltrec.Clt.Apt, cltrec.Clt.DOB,
-			cltrec.Clt.Phonenum, cltrec.Clt.Fammbrs},
-	}
+	newrec := &clientrec{key.IntID(), *clt}
+
 	b, err := json.Marshal(newrec)
 	if err != nil {
 		c.Errorf("marshaling error:%v\n", err)
@@ -122,7 +142,8 @@ func getallclients(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 		clientrecs[i] = clientrec{ids[i].IntID(), client{clients[i].Firstname,
 			clients[i].Lastname, clients[i].Address,
 			clients[i].Apt, clients[i].DOB, clients[i].Phonenum,
-			clients[i].Fammbrs}}
+			clients[i].Addlmales, clients[i].Addlfemales,
+			clients[i].Fammbrs, clients[i].Financials}}
 	}
 	c.Debugf("getallclients: clientrecs = %v\n", clientrecs)
 	b, err := json.Marshal(clientrecs)

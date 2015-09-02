@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"time"
 
 	"appengine"
 	"appengine/datastore"
@@ -18,19 +19,57 @@ type ContextHandler struct {
 }
 
 type client struct {
-	Firstname string
-	Lastname  string
-	Address   string
-	Apt       string
-	DOB       string
-	Phonenum  string
-	Fammbrs   []fammbr
+	Firstname   string
+	Lastname    string
+	Address     string
+	Apt         string
+	DOB         string
+	Phonenum    string
+	Addlmales   string
+	Addlfemales string
+	Fammbrs     []fammbr
+	Financials  financials
 }
 
 type fammbr struct {
 	Name   string
 	DOB    string
 	Female bool
+}
+
+type financials struct {
+	FatherIncome          string
+	MotherIncome          string
+	AFDCIncome            string
+	GAIncome              string
+	SSIIncome             string
+	UnemploymentInsIncome string
+	SocialSecurityIncome  string
+	AlimonyIncome         string
+	ChildSupportIncome    string
+	Other1Income          string
+	Other1IncomeType      string
+	Other2Income          string
+	Other2IncomeType      string
+	Other3Income          string
+	Other3IncomeType      string
+	RentExpense           string
+	UtilitiesExpense      string
+	WaterExpense          string
+	PhoneExpense          string
+	FoodExpense           string
+	GasExpense            string
+	CarPaymentExpense     string
+	TVInternetExpense     string
+	GarbageExpense        string
+	Other1Expense         string
+	Other1ExpenseType     string
+	Other2Expense         string
+	Other2ExpenseType     string
+	Other3Expense         string
+	Other3ExpenseType     string
+	TotalExpense          string
+	TotalIncome           string
 }
 
 type clientrec struct {
@@ -49,9 +88,24 @@ func init() {
 	http.Handle("/client", ContextHandler{getclientpage})
 	http.Handle("/editclient", ContextHandler{editclientpage})
 	http.Handle("/addclient", ContextHandler{newclientpage})
-	http.Handle("/api/addclient", ContextHandler{addclient})
-	http.Handle("/api/editclient", ContextHandler{editclient})
+	http.Handle("/api/client", ContextHandler{addclient})
+	http.Handle("/api/client/", ContextHandler{editclient})
 	http.Handle("/api/getallclients", ContextHandler{getallclients})
+}
+
+var funcMap = template.FuncMap{"age": age}
+var templates = template.Must(template.New("client").Funcs(funcMap).ParseGlob("*.html"))
+
+func age(dobs string) string {
+	if len(dobs) == 0 {
+		return ""
+	}
+	dob, err := time.Parse("2006-01-02", dobs)
+	if err != nil {
+		return ""
+	}
+	agens := time.Since(dob)
+	return strconv.FormatFloat(agens.Hours()/float64(24*365), 'f', 0, 64)
 }
 
 func homepage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
@@ -73,14 +127,11 @@ func homepage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		u.Email,
 		l,
 	}
-	err := homepageTemplate.Execute(w, data)
+	err := templates.ExecuteTemplate(w, "home.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
-
-var homepageTemplate = template.Must(template.ParseFiles("home.html",
-	"scripts.html", "header.html"))
 
 func listclientspage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	u := user.Current(c)
@@ -118,14 +169,11 @@ func listclientspage(c appengine.Context, w http.ResponseWriter, r *http.Request
 		l,
 		clientrecs,
 	}
-	err = clientsTemplate.Execute(w, data)
+	err = templates.ExecuteTemplate(w, "clients.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
-
-var clientsTemplate = template.Must(template.ParseFiles("clients.html",
-	"scripts.html", "header.html"))
 
 func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	u := user.Current(c)
@@ -174,14 +222,12 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 		l,
 		clientrec{id, clt},
 	}
-	err = clientTemplate.Execute(w, data)
+
+	err = templates.ExecuteTemplate(w, "client.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
-
-var clientTemplate = template.Must(template.ParseFiles("client.html",
-	"scripts.html", "header.html"))
 
 func newclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	u := user.Current(c)
@@ -198,20 +244,21 @@ func newclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
 
+	clt := client{}
+
 	data := struct {
 		U, LogoutUrl string
+		Clientrec    clientrec
 	}{
 		u.Email,
 		l,
+		clientrec{0, clt},
 	}
-	err := newClientTemplate.Execute(w, data)
+	err := templates.ExecuteTemplate(w, "newclient.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
-
-var newClientTemplate = template.Must(template.ParseFiles("newclient.html",
-	"scripts.html", "header.html"))
 
 func editclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	u := user.Current(c)
@@ -259,11 +306,8 @@ func editclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request)
 		l,
 		clientrec{id, clt},
 	}
-	err = editClientTemplate.Execute(w, data)
+	err = templates.ExecuteTemplate(w, "editclient.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
-
-var editClientTemplate = template.Must(template.ParseFiles("editclient.html",
-	"scripts.html", "header.html"))

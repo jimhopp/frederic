@@ -27,7 +27,7 @@ func TestAddClient(t *testing.T) {
 	defer inst.Close()
 
 	data := strings.NewReader(`{"Firstname": "frederic", "Lastname": "ozanam","Address":"123 Easy St","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212"}`)
-	req, err := inst.NewRequest("PUT", "/api/addclient", data)
+	req, err := inst.NewRequest("PUT", "/api/client", data)
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestAddClient(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body := w.Body.Bytes()
-	expected := []byte(`{"Firstname":"frederic","Lastname":"ozanam","Address":"123 Easy St","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Fammbrs":null}`)
+	expected := []byte(`{"Firstname":"frederic","Lastname":"ozanam","Address":"123 Easy St","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Addlmales":"","Addlfemales":"","Fammbrs":null,"Financials":{"FatherIncome":"","MotherIncome":"","AFDCIncome":"","GAIncome":"","SSIIncome":"","UnemploymentInsIncome":"","SocialSecurityIncome":"","AlimonyIncome":"","ChildSupportIncome":"","Other1Income":"","Other1IncomeType":"","Other2Income":"","Other2IncomeType":"","Other3Income":"","Other3IncomeType":"","RentExpense":"","UtilitiesExpense":"","WaterExpense":"","PhoneExpense":"","FoodExpense":"","GasExpense":"","CarPaymentExpense":"","TVInternetExpense":"","GarbageExpense":"","Other1Expense":"","Other1ExpenseType":"","Other2Expense":"","Other2ExpenseType":"","Other3Expense":"","Other3ExpenseType":"","TotalExpense":"","TotalIncome":""}}`)
 	if !bytes.Contains(body, expected) {
 		t.Errorf("got body %v (%v), want %v", body, string(body),
 			expected)
@@ -140,9 +140,9 @@ func TestUpdateClient(t *testing.T) {
 		t.Fatalf("unable to add client: %v", err)
 	}
 
-	data := strings.NewReader(`{"Id": ` + strconv.FormatInt(id, 10) +
-		`, "Clt": {"Firstname": "Frederic", "Lastname": "Ozanam"}}`)
-	req, err := inst.NewRequest("POST", "/api/editclient", data)
+	data := strings.NewReader(`{"Firstname": "Frederic", "Lastname": "Ozanam"}`)
+	req, err := inst.NewRequest("PUT", "/client/"+
+		strconv.FormatInt(id, 10), data)
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
@@ -162,10 +162,10 @@ func TestUpdateClient(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body := w.Body.Bytes()
-	expected := []byte(`{"Firstname":"Frederic","Lastname":"Ozanam","Address":"","Apt":"","DOB":"","Phonenum":"","Fammbrs":null}`)
+	expected := []byte(`{"Firstname":"Frederic","Lastname":"Ozanam","Address":"","Apt":"","DOB":"","Phonenum":"","Addlmales":"","Addlfemales":"","Fammbrs":null,"Financials":{"FatherIncome":"","MotherIncome":"","AFDCIncome":"","GAIncome":"","SSIIncome":"","UnemploymentInsIncome":"","SocialSecurityIncome":"","AlimonyIncome":"","ChildSupportIncome":"","Other1Income":"","Other1IncomeType":"","Other2Income":"","Other2IncomeType":"","Other3Income":"","Other3IncomeType":"","RentExpense":"","UtilitiesExpense":"","WaterExpense":"","PhoneExpense":"","FoodExpense":"","GasExpense":"","CarPaymentExpense":"","TVInternetExpense":"","GarbageExpense":"","Other1Expense":"","Other1ExpenseType":"","Other2Expense":"","Other2ExpenseType":"","Other3Expense":"","Other3ExpenseType":"","TotalExpense":"","TotalIncome":""}}`)
 	if !bytes.Contains(body, expected) {
-		t.Errorf("got body %v (%v), want %v", body, string(body),
-			expected)
+		t.Errorf("got body %v (%v), want %v (%v)", body, string(body),
+			expected, string(expected))
 	}
 
 	key := datastore.NewKey(c, "SVDPClient", "", id, nil)
@@ -182,7 +182,7 @@ func TestUpdateClient(t *testing.T) {
 	}
 }
 
-func TestUpdateErrorClient(t *testing.T) {
+func TestUpdateInvalidData(t *testing.T) {
 	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {
 		t.Fatalf("Failed to create instance: %v", err)
@@ -196,9 +196,10 @@ func TestUpdateErrorClient(t *testing.T) {
 		t.Fatalf("unable to add client: %v", err)
 	}
 
-	data := strings.NewReader(`{"Id": ` + strconv.FormatInt(id, 10) +
-		`, "Clt": {"Firstname": "Frederic", "Lastname": "Ozanam", "DOB":"alphabet"}}`)
-	req, err := inst.NewRequest("POST", "/api/editclient", data)
+	data := strings.NewReader(`{"Firstname": "Frederic", "Lastname": 
+		"Ozanam", "DOB":"alphabet"}`)
+	req, err := inst.NewRequest("PUT", "/client/"+strconv.FormatInt(id,
+		10), data)
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
@@ -214,8 +215,82 @@ func TestUpdateErrorClient(t *testing.T) {
 	editclient(c, w, req)
 
 	code := w.Code
-	if code != http.StatusInternalServerError {
-		t.Errorf("got code %v, want %v", code, http.StatusInternalServerError)
+	if code != http.StatusBadRequest {
+		t.Errorf("got code %v, want %v", code, http.StatusBadRequest)
+	}
+}
+
+func TestUpdateMissingId(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	id, err := addclienttodb(newclient, inst)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	data := strings.NewReader(`{"Firstname": "Frederic", "Lastname": 
+		"Ozanam"}`)
+	req, err := inst.NewRequest("PUT", "/client/", data)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+
+	editclient(c, w, req)
+
+	code := w.Code
+	if code != http.StatusBadRequest {
+		t.Errorf("got code %v, want %v", code, http.StatusBadRequest)
+	}
+}
+
+func TestUpdateMalformedId(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	id, err := addclienttodb(newclient, inst)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	data := strings.NewReader(`{"Firstname": "Frederic", "Lastname": 
+		"Ozanam"}`)
+	req, err := inst.NewRequest("PUT", "/client/"+"bogus-id", data)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+
+	editclient(c, w, req)
+
+	code := w.Code
+	if code != http.StatusBadRequest {
+		t.Errorf("got code %v, want %v", code, http.StatusBadRequest)
 	}
 }
 

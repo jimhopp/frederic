@@ -19,8 +19,8 @@ var _ = BeforeSuite(func() {
 	// Choose a WebDriver:
 
 	//agoutiDriver = agouti.PhantomJS()
-	//agoutiDriver = agouti.Selenium()
-	 agoutiDriver = agouti.ChromeDriver()
+	agoutiDriver = agouti.Selenium()
+	// agoutiDriver = agouti.ChromeDriver()
 
 	Expect(agoutiDriver.Start()).To(Succeed())
 })

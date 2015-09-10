@@ -126,6 +126,99 @@ func TestGetAllClients(t *testing.T) {
 	}
 }
 
+func TestGetAllVisits(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	cltid, err := addclienttodb(newclient, inst)
+	log.Printf("TestAllVisits: got %v from addclienttodb\n", cltid)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	visits := []visit{
+		{Vincentians: "Michael, Mary Margaret",
+			Visitdate: "2013-04-03"},
+		{Vincentians: "Irene, Jim",
+			Visitdate: "2013-05-03"},
+	}
+	for i := 0; i < len(visits); i++ {
+		data, err := json.Marshal(visits[i])
+		if err != nil {
+			t.Fatalf("Failed to marshal %v", visits[i])
+		}
+		req, err := inst.NewRequest("PUT", "/visit/"+
+			strconv.FormatInt(cltid, 10), bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header = map[string][]string{
+			"Content-Type": {"application/json"},
+		}
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+
+		addvisit(c, w, req)
+
+		code := w.Code
+		if code != http.StatusOK {
+			t.Errorf("got code %v, want %v", code, http.StatusCreated)
+		}
+
+		body := w.Body.Bytes()
+		newrec := &visitrec{}
+		err = json.Unmarshal(body, newrec)
+		if err != nil {
+			t.Errorf("unable to parse %v: %v", string(body), err)
+		}
+	}
+
+	req, err := inst.NewRequest("GET", "/api/getallvisits/"+
+		strconv.FormatInt(cltid, 10), nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w := httptest.NewRecorder()
+
+	c := appengine.NewContext(req)
+	getallvisits(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	body := w.Body.Bytes()
+	createdvisitrecs := []visitrec{}
+	err = json.Unmarshal(body, &createdvisitrecs)
+	if err != nil {
+		t.Errorf("error unmarshaling response to getvisits %v\n", err)
+	}
+	if len(createdvisitrecs) != len(visits) {
+		t.Errorf("got %v visits, want %v\n", len(createdvisitrecs),
+			1)
+	}
+	for i := 0; i < len(visits); i++ {
+		found := false
+		for j := 0; j < len(createdvisitrecs); j++ {
+			if reflect.DeepEqual(createdvisitrecs[j].Visit, visits[i]) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("unable to find %v in %v",
+				visits[i], &createdvisitrecs)
+		}
+	}
+}
 func TestUpdateClient(t *testing.T) {
 	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {
@@ -177,8 +270,73 @@ func TestUpdateClient(t *testing.T) {
 	expectedc := &client{}
 	expectedc.Firstname = "Frederic"
 	expectedc.Lastname = "Ozanam"
-	if reflect.DeepEqual(clt, expectedc) {
+	if !reflect.DeepEqual(&clt, expectedc) {
 		t.Errorf("db record shows %v, want %v", clt, expectedc)
+	}
+}
+
+func TestAddVisit(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	id, err := addclienttodb(newclient, inst)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	data := strings.NewReader(`{"Vincentians": "Michael, Mary Margaret", "VisitDate": "2011-04-03", "Giftcardamt": "100", "Numfoodboxes": "2"}`)
+	req, err := inst.NewRequest("PUT", "/visit/"+
+		strconv.FormatInt(id, 10), data)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+
+	addvisit(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusCreated)
+	}
+	body := w.Body.Bytes()
+	newrec := &visitrec{}
+	err = json.Unmarshal(body, newrec)
+	if err != nil {
+		t.Errorf("unable to parse %v: %v", string(body), err)
+	}
+	/*
+		expected := []byte(`{"Vincentians":"Michael, Mary Margaret","Visitdate":"2011-04-03","Giftcardamt":"100","Numfoodboxes":"2"}`)
+		if !bytes.Contains(body, expected) {
+			t.Errorf("got body %v (%v), want %v (%v)", body, string(body),
+				expected, string(expected))
+		}
+	*/
+	key := datastore.NewKey(c, "SVDPClientVisit", "", newrec.Id,
+		datastore.NewKey(c, "SVDPClient", "", id, nil))
+	vst := visit{}
+	if err := datastore.Get(c, key, &vst); err != nil {
+		t.Fatalf("error on Get: %v", err)
+		return
+	}
+	expectedv := &visit{}
+	expectedv.Vincentians = "Michael, Mary Margaret"
+	expectedv.Visitdate = "2011-04-03"
+	expectedv.Giftcardamt = "100"
+	expectedv.Numfoodboxes = "2"
+	if !reflect.DeepEqual(&vst, expectedv) {
+		t.Errorf("db record shows %v, want %v", vst, expectedv)
 	}
 }
 

@@ -31,6 +31,44 @@
               </tr>
             {{ end }}
         </table>  
+        <h4>Visits</h4>
+        <table id="Visits">
+          <thead>
+            <th>Date</th>
+	    <th>Vincentians</th>
+	    <th>Assistance Requested</th>
+	    <th>Gift Cards Amt</th>
+	    <th>Num Food Boxes/Bags</th>
+	    <th>Rent Assistance</th>
+	    <th>Utilities Assistance</th>
+	    <th>Water Bill Assistance</th>
+	    <th>Other Assistance - Type</th>
+	    <th>Other Assistance - Amt</th>
+	    <th>Vouchers - Clothing</th>
+	    <th>Vouchers - Furniture</th>
+	    <th>Vouchers - Other</th>
+	    <th>Comment</th>
+          </thead>
+            {{ range $i, $visit := .Visits }}
+              <tr>
+                <td><input type="date" id="visit{{ $i }}.visitdate" name="visit{{ $i }}.visitdate" value="{{ .Visitdate }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.vincentians" name="visit{{ $i }}.vincentians" value="{{ .Vincentians }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.assistancerequested" name="visit{{ $i }}.assistancerequested" value="{{ .Assistancerequested }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.giftcardamt" name="visit{{ $i }}.giftcardamt" value="{{ .Giftcardamt }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.numfoodboxes" name="visit{{ $i }}.numfoodboxes" value="{{ .Numfoodboxes }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.rentassistance" name="visit{{ $i }}.rentassistance" value="{{ .Rentassistance }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.utilitiesassistance" name="visit{{ $i }}.utilitiesassistance" value="{{ .Utilitiesassistance }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.waterbillassistance" name="visit{{ $i }}.waterbillassistance" value="{{ .Waterbillassistance }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.otherassistancetype" name="visit{{ $i }}.otherassistancetype" value="{{ .Otherassistancetype }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.otherassistanceamt" name="visit{{ $i }}.otherassistanceamt" value="{{ .Otherassistanceamt }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.vouchersclothing" name="visit{{ $i }}.vouchersclothing" value="{{ .Vouchersclothing }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.vouchersfurniture" name="visit{{ $i }}.vouchersfurniture" value="{{ .Vouchersfurniture }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.vouchersother" name="visit{{ $i }}.vouchersother" value="{{ .Vouchersother }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.comment" name="visit{{ $i }}.comment" value="{{ .Comment }}" disabled="true"></td>
+              </tr>
+            {{ end }}
+        </table>  
+        <br>
 	<table>
           <thead>
             <th colspan="2">Monthly Income</th>
@@ -116,6 +154,7 @@
           </tr>
         </table>
    <a href="/editclient?id={{ .Clientrec.Id }}">(edit)</a>
+   <a href="/recordvisit/{{ .Clientrec.Id }}">(record visit)</a>
   <script>
    $( document ).ready(function() {
     console.log( 'ready!' );

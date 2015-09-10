@@ -6,6 +6,7 @@ package frederic
 import (
 	"html/template"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -72,9 +73,32 @@ type financials struct {
 	TotalIncome           string
 }
 
+type visit struct {
+	Vincentians         string
+	Visitdate           string
+	Assistancerequested string
+	Giftcardamt         string
+	Numfoodboxes        string
+	Rentassistance      string
+	Utilitiesassistance string
+	Waterbillassistance string
+	Otherassistancetype string
+	Otherassistanceamt  string
+	Vouchersclothing    string
+	Vouchersfurniture   string
+	Vouchersother       string
+	Comment             string
+}
+
 type clientrec struct {
 	Id  int64
 	Clt client
+}
+
+type visitrec struct {
+	Id       int64
+	ClientId int64
+	Visit    visit
 }
 
 func (f ContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -88,9 +112,12 @@ func init() {
 	http.Handle("/client", ContextHandler{getclientpage})
 	http.Handle("/editclient", ContextHandler{editclientpage})
 	http.Handle("/addclient", ContextHandler{newclientpage})
+	http.Handle("/recordvisit/", ContextHandler{recordvisitpage})
 	http.Handle("/api/client", ContextHandler{addclient})
 	http.Handle("/api/client/", ContextHandler{editclient})
+	http.Handle("/api/visit/", ContextHandler{addvisit})
 	http.Handle("/api/getallclients", ContextHandler{getallclients})
+	http.Handle("/api/getallvisits/", ContextHandler{getallvisits})
 }
 
 var funcMap = template.FuncMap{"age": age}
@@ -188,20 +215,20 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	query := r.URL.Query()
-	ids, ok := query["id"]
+	urlquery := r.URL.Query()
+	clientids, ok := urlquery["id"]
 	if !ok {
 		http.Error(w, "id parm missing or mis-formed",
 			http.StatusNotFound)
 		return
 	}
-	id, err := strconv.ParseInt(ids[0], 10, 64)
+	clientid, err := strconv.ParseInt(clientids[0], 10, 64)
 	if err != nil {
-		c.Warningf("got error %v trying to parse id %v\n", err, id)
+		c.Warningf("got error %v trying to parse id %v\n", err, clientid)
 		http.Error(w, "unable to find client", http.StatusNotFound)
 		return
 	}
-	key := datastore.NewKey(c, "SVDPClient", "", id, nil)
+	key := datastore.NewKey(c, "SVDPClient", "", clientid, nil)
 	var clt client
 	err = datastore.Get(c, key, &clt)
 	if err != nil {
@@ -212,15 +239,21 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	q := datastore.NewQuery("SVDPClientVisit").Ancestor(key).Order("-Visitdate")
+	visits := make([]visit, 0, 10)
+	_, err = q.GetAll(c, &visits)
+
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
 
 	data := struct {
 		U, LogoutUrl string
 		Clientrec    clientrec
+		Visits       []visit
 	}{
 		u.Email,
 		l,
-		clientrec{id, clt},
+		clientrec{clientid, clt},
+		visits,
 	}
 
 	err = templates.ExecuteTemplate(w, "client.html", data)
@@ -307,6 +340,59 @@ func editclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request)
 		clientrec{id, clt},
 	}
 	err = templates.ExecuteTemplate(w, "editclient.html", data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func recordvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	u := user.Current(c)
+	if u == nil {
+		url, err := user.LoginURL(c, r.URL.String())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Location", url)
+		w.WriteHeader(http.StatusFound)
+		return
+	}
+
+	re, err := regexp.Compile("[0-9]+")
+	idstr := re.FindString(r.URL.Path)
+
+	clientid, err := strconv.ParseInt(idstr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid/missing client id ", http.StatusBadRequest)
+		return
+	}
+	clientkey := datastore.NewKey(c, "SVDPClient", "", clientid, nil)
+	clt := client{}
+	err = datastore.Get(c, clientkey, &clt)
+	if err == datastore.ErrNoSuchEntity {
+		http.Error(w, "Unable to find client with id "+idstr,
+			http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
+
+	vst := visit{}
+
+	data := struct {
+		U, LogoutUrl string
+		Client       client
+		Visit        visit
+	}{
+		u.Email,
+		l,
+		clt,
+		vst,
+	}
+	err = templates.ExecuteTemplate(w, "recordvisit.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

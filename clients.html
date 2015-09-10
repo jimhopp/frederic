@@ -8,6 +8,7 @@
       {{ range $i, $clt := .Clients }}
         <tr>
           <td>{{ $i }}.<a href="/client?id={{ .Id }}">{{ .Clt.Firstname }} {{ .Clt.Lastname }}</a></td>
+          <td><a href="/recordvisit/{{ .Id }}">(record visit)</a></td>
         </tr>
       {{ end }}
     </table>

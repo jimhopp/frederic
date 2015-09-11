@@ -5,7 +5,7 @@
     {{ template "header" . }}
     <p id="status" class="hidden">Empty status</p>
     <h4>Client</h4>
-    Name: {{ .Client.Firstname }} {{ .Client.Lastname }}
+    Name: <a id="viewclient" href="">{{ .Client.Firstname }} {{ .Client.Lastname }}</a>
     <br>
     Address: {{ .Client.Address }} {{ .Client.Apt }}
     <br>
@@ -34,6 +34,10 @@
    $( document ).ready(function() {
     console.log( 'ready!' );
 
+    var path = location.pathname.split("/");
+    clientId = path[2];
+    console.log("clientId=" + clientId);
+
     var clickedsubmit = function(evt) {
 
       var visit = {
@@ -54,9 +58,6 @@
       }
 
       evt.preventDefault();
-      var path = location.pathname.split("/");
-      clientId = path[2];
-      console.log("clientId=" + clientId);
       $.ajax({
         method: "PUT",
         url: "/api/visit/" + clientId,
@@ -73,6 +74,7 @@
     }
 
     $( 'input#submit' ).on('click', clickedsubmit);
+    $( 'a#viewclient' ).attr('href', '/client?id=' + clientId);
 
     });
   </script>

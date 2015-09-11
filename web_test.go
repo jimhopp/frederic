@@ -105,11 +105,11 @@ func TestListClientsPage(t *testing.T) {
 
 	body := w.Body.Bytes()
 	rows := []string{"<td>Clients</td>",
-		"<a href=\"/client?id=" + strconv.FormatInt(ids[0], 10) +
+		"<a href=\"/client/" + strconv.FormatInt(ids[0], 10) +
 			"\">frederic ozanam</a>",
-		"<a href=\"/client?id=" + strconv.FormatInt(ids[1], 10) +
+		"<a href=\"/client/" + strconv.FormatInt(ids[1], 10) +
 			"\">John Doe</a>",
-		"<a href=\"/client?id=" + strconv.FormatInt(ids[2], 10) +
+		"<a href=\"/client/" + strconv.FormatInt(ids[2], 10) +
 			"\">Jane Doe</a>",
 	}
 	for i := 0; i < len(rows); i++ {
@@ -135,7 +135,7 @@ func TestGetClientPage(t *testing.T) {
 
 	sid := strconv.FormatInt(id, 10)
 
-	url := "/client?id=" + sid
+	url := "/client/" + sid
 	req, err := inst.NewRequest("GET", url, nil)
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
@@ -156,7 +156,7 @@ func TestGetClientPage(t *testing.T) {
 	body := w.Body.Bytes()
 	rows := []string{`value="frederic"`,
 		`value="ozanam"`,
-		"<a href=\"/editclient?id=" + sid + "\">(edit)</a>",
+		"<a href=\"/editclient/" + sid + "\">(edit)</a>",
 	}
 	for i := 0; i < len(rows); i++ {
 		if !bytes.Contains(body, []byte(rows[i])) {
@@ -172,7 +172,7 @@ func TestGetClientNotFound(t *testing.T) {
 	}
 	defer inst.Close()
 
-	url := "/client?id=1234"
+	url := "/client/1234"
 	req, err := inst.NewRequest("GET", url, nil)
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
@@ -193,7 +193,8 @@ func TestGetClientNotFound(t *testing.T) {
 	body := w.Body.Bytes()
 	msg := []byte("unable to find client")
 	if !bytes.Contains(body, msg) {
-		t.Errorf("got body %v, did not contain %v", string(body), msg)
+		t.Errorf("got body %v, did not contain %v", string(body),
+			string(msg))
 	}
 }
 
@@ -204,7 +205,7 @@ func TestGetClientMissingParm(t *testing.T) {
 	}
 	defer inst.Close()
 
-	url := "/client"
+	url := "/client/"
 	req, err := inst.NewRequest("GET", url, nil)
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
@@ -223,9 +224,10 @@ func TestGetClientMissingParm(t *testing.T) {
 	}
 
 	body := w.Body.Bytes()
-	msg := []byte("id parm missing or mis-formed")
+	msg := []byte("client id missing in path")
 	if !bytes.Contains(body, msg) {
-		t.Errorf("got body %v, did not contain %v", string(body), msg)
+		t.Errorf("got body %v, did not contain %v", string(body),
+			string(msg))
 	}
 }
 
@@ -245,7 +247,7 @@ func TestEditClientPage(t *testing.T) {
 
 	sid := strconv.FormatInt(id, 10)
 
-	url := "/editclient?id=" + sid
+	url := "/editclient/" + sid
 	req, err := inst.NewRequest("GET", url, nil)
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)

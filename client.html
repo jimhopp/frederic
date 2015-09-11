@@ -153,7 +153,7 @@
             <td><input type="text" id="totalexp" name="exptotal" disabled="true" value="{{ .Clientrec.Clt.Financials.TotalExpense }}"></td>
           </tr>
         </table>
-   <a href="/editclient?id={{ .Clientrec.Id }}">(edit)</a>
+   <a href="/editclient/{{ .Clientrec.Id }}">(edit)</a>
    <a href="/recordvisit/{{ .Clientrec.Id }}">(record visit)</a>
   <script>
    $( document ).ready(function() {

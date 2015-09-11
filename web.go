@@ -109,8 +109,8 @@ func (f ContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func init() {
 	http.Handle("/", ContextHandler{homepage})
 	http.Handle("/clients", ContextHandler{listclientspage})
-	http.Handle("/client", ContextHandler{getclientpage})
-	http.Handle("/editclient", ContextHandler{editclientpage})
+	http.Handle("/client/", ContextHandler{getclientpage})
+	http.Handle("/editclient/", ContextHandler{editclientpage})
 	http.Handle("/addclient", ContextHandler{newclientpage})
 	http.Handle("/recordvisit/", ContextHandler{recordvisitpage})
 	http.Handle("/api/client", ContextHandler{addclient})
@@ -215,17 +215,23 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	urlquery := r.URL.Query()
-	clientids, ok := urlquery["id"]
-	if !ok {
-		http.Error(w, "id parm missing or mis-formed",
-			http.StatusNotFound)
+	re, err := regexp.Compile("[0-9]+")
+	if err != nil {
+		http.Error(w, "unable to parse regex: "+err.Error(),
+			http.StatusInternalServerError)
 		return
 	}
-	clientid, err := strconv.ParseInt(clientids[0], 10, 64)
+	idstr := re.FindString(r.URL.Path)
+	if len(idstr) == 0 {
+		c.Warningf("id missing in path")
+		http.Error(w, "client id missing in path", http.StatusNotFound)
+		return
+	}
+	clientid, err := strconv.ParseInt(idstr, 10, 64)
 	if err != nil {
 		c.Warningf("got error %v trying to parse id %v\n", err, clientid)
-		http.Error(w, "unable to find client", http.StatusNotFound)
+		http.Error(w, "error parsing client id "+idstr+
+			" ("+err.Error()+")", http.StatusInternalServerError)
 		return
 	}
 	key := datastore.NewKey(c, "SVDPClient", "", clientid, nil)
@@ -306,14 +312,14 @@ func editclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	query := r.URL.Query()
-	ids, ok := query["id"]
-	if !ok {
-		http.Error(w, "id parm missing or mis-formed",
+	re, err := regexp.Compile("[0-9]+")
+	if err != nil {
+		http.Error(w, "unable to parse regex: "+err.Error(),
 			http.StatusNotFound)
 		return
 	}
-	id, err := strconv.ParseInt(ids[0], 10, 64)
+	idstr := re.FindString(r.URL.Path)
+	id, err := strconv.ParseInt(idstr, 10, 64)
 	if err != nil {
 		c.Warningf("got error %v trying to parse id %v\n", err, id)
 		http.Error(w, "unable to find client", http.StatusNotFound)

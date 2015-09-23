@@ -1,21 +1,26 @@
 {{ define "clientupdate" }}
-      <p id="status" class="hidden">Empty status</p>
+      <div class="box">
       <h4>Client</h4>
       <form>
-        <label>First Name:<input type="text" id="fname" value="{{ .Clientrec.Clt.Firstname }}" name="FirstName"></label>
+        <label class="contained">First Name:<input type="text" id="fname" value="{{ .Clientrec.Clt.Firstname }}" name="FirstName"></label>
         <label>Last Name:<input type="text" id="lname" value="{{ .Clientrec.Clt.Lastname }}" name="LastName"></label>
         <label>DOB:<input type="date" id="dob" value="{{ .Clientrec.Clt.DOB }}" name="dob"></label>
 	<br>
-        <label>Address:<input type="text" id="address" value="{{ .Clientrec.Clt.Address }}" name="Address"></label>
-        <label>Apt:<input type="text" id="apt" value="{{ .Clientrec.Clt.Apt }}" name="apt"></label>
-        <label>Phone:<input type="text" id="phonenum" value="{{ .Clientrec.Clt.Phonenum }}" name="phonenum"></label>
-	<br>
-        <label>Other Adults - Male:<input type="text" id="addlmales" value="{{ .Clientrec.Clt.Addlmales }}" name="addlmales"></label>
-        <label>Other Adults - Female:<input type="text" id="addlfemales" value="{{ .Clientrec.Clt.Addlfemales }}" name="addlfemales"></label>
-        <h4>Children</h4>
-	<table>
+        <label class="contained">Address:<input type="text" size="40" id="address" value="{{ .Clientrec.Clt.Address }}" name="Address"></label>
+        <label>Apt:<input type="text" size="10" id="apt" value="{{ .Clientrec.Clt.Apt }}" name="apt"></label>
+        <label>Phone:<input type="text" size="15" id="phonenum" value="{{ .Clientrec.Clt.Phonenum }}" name="phonenum"></label>
+        </div>
+        <br>
+	<div class="box">
+        <h4>Household</h4>
+        <label class="contained">Other Adults - Males:<input type="text" size="5" id="addlmales" value="{{ .Clientrec.Clt.Addlmales }}" name="addlmales"></label>
+        <label>Other Adults - Females:<input type="text" size="5" id="addlfemales" value="{{ .Clientrec.Clt.Addlfemales }}" name="addlfemales"></label>
+	<table class="contained">
 	  <thead>
-	    <th>Name</th><th>DOB</th><th>Gender</th><th><Remove></th>
+            <tr><th colspan="4">Children</th></tr>
+            <tr>
+	      <th>Name</th><th>DOB</th><th>Gender</th><th><Remove></th>
+	    </tr>
 	  </thead>
           <tbody id="addlfammbrs">
 	    {{ range $i, $fammbr := .Clientrec.Clt.Fammbrs }}
@@ -42,14 +47,17 @@
             <tr><td colspan="4" class><input type="button" id="addfammbr" value="Add Another Child"></td></tr>
        </tbody>
 	</table>
+        </div>
         <br>
-	<table>
+        <div class="box">
+        <h4>Financials</h4>
+	<table class="contained">
           <thead>
             <th colspan="2">Monthly Income</th>
             <th colspan="2">Monthly Expenses</th>
           </thead>
           <tr>
-            <td>Father's Income</td>
+            <td class="contained">Father's Income</td>
             <td><input  type="text" id="incfather" name="incfather" value="{{ .Clientrec.Clt.Financials.FatherIncome }}"></td>
             <td>Rent</td>
             <td><input  type="text" id="exprent" name="exprent" value="{{ .Clientrec.Clt.Financials.RentExpense }}"></td>
@@ -127,11 +135,21 @@
             <td><input type="text" id="totalexp" name="exptotal" disabled="true" value="{{ .Clientrec.Clt.Financials.TotalExpense }}"></td>
           </tr>
         </table>
-        <input type="submit" id="submit">
+        </div>
+        <br>
+        <p id="status" class="hidden">Empty status</p>
+        <input type="submit" id="submit" class="submit">
       </form>
   <script>
    $( document ).ready(function() {
     console.log( 'ready!' );
+    function isAdd() {
+      {{ if .Clientrec.Id }}
+        return false;
+      {{ else }}
+        return true;
+      {{ end }}
+    }
 
     var clickedrm = function(evt) {
       var row = $( evt.target ).parentsUntil('tbody', 'tr');
@@ -225,8 +243,9 @@
         data: JSON.stringify(client)
 })
   .done(function(  data, textStatus, jqXHR ) {
-    $( '#status' ).text('successfully updated client ' + data.Clt.Firstname + ' ' 
-      + data.Clt.Lastname).removeClass('hidden');
+    var actiontext = isAdd() ? "added" : "updated";
+    $( '#status' ).text('Successfully ' + actiontext + ' client ' + data.Clt.Firstname + ' ' 
+      + data.Clt.Lastname + '!').removeClass('hidden');
   })
   .fail(function( jqXHR, textStatus, errorThrown ) {
     alert( "failure: " + textStatus + ',' + errorThrown + JSON.stringify(jqXHR));
@@ -280,6 +299,7 @@
       }
     }
 
+    $( 'input#submit' ).val(isAdd() ? "Add" : "Update");
     $( 'input#submit' ).on('click', clickedsubmit);
     $( 'input#addfammbr' ).on('click', clickedadd);
     $( 'input[name="rmfammbr"' ).on('click', clickedrm);

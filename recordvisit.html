@@ -3,31 +3,50 @@
 {{ template "scripts" }}
   <body class="main">
     {{ template "header" . }}
-    <p id="status" class="hidden">Empty status</p>
+    <div class="box">
     <h4>Client</h4>
-    Name: <a id="viewclient" href="">{{ .Client.Firstname }} {{ .Client.Lastname }}</a>
+    <span class="contained">Name:</span> <a id="viewclient" href="">{{ .Client.Firstname }} {{ .Client.Lastname }}</a>
     <br>
-    Address: {{ .Client.Address }} {{ .Client.Apt }}
+    <span class="contained">Address: {{ .Client.Address }} {{ .Client.Apt }}</span>
+    <br>
+    </div>
     <br>
 
+   <div class="box">
    <h4>Visit</h4>
    <form>
-     <label>Vincentians:<input type="text" id="vincentians" value="" name="Vincentians"></label>
-      <label>Visit Date:<input type="date" id="visitdate" value="" name="visitdate"></label>
-      <label>Assistance Requested:<input type="text" id="assistancerequested" value="" name="assistancerequested"></label>
-      <label>Gift Card Amount:<input type="text" id="giftcardamt" value="" name="giftcardamt"></label>
-      <label>Num Bags/Boxes of Food:<input type="text" id="numfoodboxes" value="" name="numfoodboxes"></label>
-      <label>Rent Assistance:<input type="text" id="rentassistance" value="" name="rentassistance"></label>
-      <label>Utilities Assistance:<input type="text" id="utilitiesassistance" value="" name="utilitiesassistance"></label>
-      <label>Water bill assistance:<input type="text" id="waterbillassistance" value="" name="waterbillassistance"></label>
-      <label>Other assistance - type:<input type="text" id="otherassistancetype" value="" name="otherassistancetype"></label>
-      <label>Other assistance - amount:<input type="text" id="otherassistanceamt" value="" name="otherassistanceamt"></label>
-      <label>Vouchers - clothing:<input type="text" id="vouchersclothing" value="" name="vouchersclothing"></label>
-      <label>Vouchers - furniture:<input type="text" id="vouchersfurniture" value="" name="vouchersfurniture"></label>
-      <label>Vouchers - other:<input type="text" id="vouchersother" value="" name="vouchersother"></label>
-      <label>Comment:<input type="text" id="comment" value="" name="comment"></label>
+     <label class="contained">Vincentians:<input type="text" id="vincentians" value="" name="Vincentians"></label>
      <br>
-     <input type="submit" id="submit">
+      <label class="contained">Visit Date:<input type="date" id="visitdate" value="" name="visitdate"></label>
+     <br>
+      <label class="contained">Assistance Requested:<input type="text" id="assistancerequested" value="" name="assistancerequested"></label>
+     <br>
+      <label class="contained">Gift Card Amount:<input type="text" id="giftcardamt" value="" name="giftcardamt"></label>
+     <br>
+      <label class="contained">Num Bags/Boxes of Food:<input type="text" id="numfoodboxes" value="" name="numfoodboxes"></label>
+     <br>
+      <label class="contained">Rent Assistance:<input type="text" id="rentassistance" value="" name="rentassistance"></label>
+     <br>
+      <label class="contained">Utilities Assistance:<input type="text" id="utilitiesassistance" value="" name="utilitiesassistance"></label>
+     <br>
+      <label class="contained">Water bill assistance:<input type="text" id="waterbillassistance" value="" name="waterbillassistance"></label>
+     <br>
+      <label class="contained">Other assistance - type:<input type="text" id="otherassistancetype" value="" name="otherassistancetype"></label>
+     <br>
+      <label class="contained">Other assistance - amount:<input type="text" id="otherassistanceamt" value="" name="otherassistanceamt"></label>
+     <br>
+      <label class="contained">Vouchers - clothing:<input type="text" id="vouchersclothing" value="" name="vouchersclothing"></label>
+     <br>
+      <label class="contained">Vouchers - furniture:<input type="text" id="vouchersfurniture" value="" name="vouchersfurniture"></label>
+     <br>
+      <label class="contained">Vouchers - other:<input type="text" id="vouchersother" value="" name="vouchersother"></label>
+     <br>
+      <label class="contained">Comment:<input type="text" id="comment" value="" name="comment"></label>
+     <br>
+     </div>
+     <br>
+    <p id="status" class="hidden">Empty status</p>
+     <input type="submit" id="submit" class="submit">
    </form> 
 
   <script>
@@ -73,6 +92,7 @@
   });
     }
 
+    $( 'input#submit' ).val('Record Visit');
     $( 'input#submit' ).on('click', clickedsubmit);
     $( 'a#viewclient' ).attr('href', '/client/' + clientId);
 

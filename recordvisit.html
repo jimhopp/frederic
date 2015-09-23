@@ -15,34 +15,50 @@
    <div class="box">
    <h4>Visit</h4>
    <form>
-     <label class="contained">Vincentians:<input type="text" id="vincentians" value="" name="Vincentians"></label>
-     <br>
-      <label class="contained">Visit Date:<input type="date" id="visitdate" value="" name="visitdate"></label>
-     <br>
-      <label class="contained">Assistance Requested:<input type="text" id="assistancerequested" value="" name="assistancerequested"></label>
-     <br>
-      <label class="contained">Gift Card Amount:<input type="text" id="giftcardamt" value="" name="giftcardamt"></label>
-     <br>
-      <label class="contained">Num Bags/Boxes of Food:<input type="text" id="numfoodboxes" value="" name="numfoodboxes"></label>
-     <br>
-      <label class="contained">Rent Assistance:<input type="text" id="rentassistance" value="" name="rentassistance"></label>
-     <br>
-      <label class="contained">Utilities Assistance:<input type="text" id="utilitiesassistance" value="" name="utilitiesassistance"></label>
-     <br>
-      <label class="contained">Water bill assistance:<input type="text" id="waterbillassistance" value="" name="waterbillassistance"></label>
-     <br>
-      <label class="contained">Other assistance - type:<input type="text" id="otherassistancetype" value="" name="otherassistancetype"></label>
-     <br>
-      <label class="contained">Other assistance - amount:<input type="text" id="otherassistanceamt" value="" name="otherassistanceamt"></label>
-     <br>
-      <label class="contained">Vouchers - clothing:<input type="text" id="vouchersclothing" value="" name="vouchersclothing"></label>
-     <br>
-      <label class="contained">Vouchers - furniture:<input type="text" id="vouchersfurniture" value="" name="vouchersfurniture"></label>
-     <br>
-      <label class="contained">Vouchers - other:<input type="text" id="vouchersother" value="" name="vouchersother"></label>
-     <br>
-      <label class="contained">Comment:<input type="text" id="comment" value="" name="comment"></label>
-     <br>
+     <table class="contained">
+     <tr>
+     <td>Vincentians:</td><td><input type="text" id="vincentians" value="" name="Vincentians"></td>
+     </tr>
+     <tr>
+      <td>Visit Date:</td><td><input type="date" id="visitdate" value="" name="visitdate"></td>
+     </tr>
+     <tr>
+      <td>Assistance Requested:</td><td><input type="text" id="assistancerequested" value="" name="assistancerequested"></td>
+     </tr>
+     <tr>
+      <td>Gift Card Amount:</td><td><input type="text" id="giftcardamt" value="" name="giftcardamt"></td>
+     </tr>
+     <tr>
+      <td>Num Bags/Boxes of Food:</td><td><input type="text" id="numfoodboxes" value="" name="numfoodboxes"></td>
+     </tr>
+     <tr>
+      <td>Rent Assistance:</td><td><input type="text" id="rentassistance" value="" name="rentassistance"></td>
+     </tr>
+     <tr>
+      <td>Utilities Assistance:</td><td><input type="text" id="utilitiesassistance" value="" name="utilitiesassistance"></td>
+     </tr>
+     <tr>
+      <td>Water bill assistance:</td><td><input type="text" id="waterbillassistance" value="" name="waterbillassistance"></td>
+     </tr>
+     <tr>
+      <td>Other assistance - type:</td><td><input type="text" id="otherassistancetype" value="" name="otherassistancetype"></td>
+     </tr>
+     <tr>
+      <td>Other assistance - amount:</td><td><input type="text" id="otherassistanceamt" value="" name="otherassistanceamt"></td>
+     </tr>
+     <tr>
+      <td>Vouchers - clothing:</td><td><input type="text" id="vouchersclothing" value="" name="vouchersclothing"></td>
+     </tr>
+     <tr>
+      <td>Vouchers - furniture:</td><td><input type="text" id="vouchersfurniture" value="" name="vouchersfurniture"></td>
+     </tr>
+     <tr>
+      <td>Vouchers - other:</td><td><input type="text" id="vouchersother" value="" name="vouchersother"></td>
+     </tr>
+     <tr>
+      <td>Comment:</td><td><input type="text" id="comment" value="" name="comment"></td>
+     </tr>
+     </table>
      </div>
      <br>
     <p id="status" class="hidden">Empty status</p>
@@ -85,7 +101,7 @@
         data: JSON.stringify(visit)
 })
   .done(function(  data, textStatus, jqXHR ) {
-    $( '#status' ).text('successfully added visit for  client ').removeClass('hidden');
+    $( '#status' ).text('Successfully recorded visit for client!').removeClass('hidden');
   })
   .fail(function( jqXHR, textStatus, errorThrown ) {
     alert( "failure: " + textStatus + ',' + errorThrown + JSON.stringify(jqXHR));

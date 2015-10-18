@@ -1,7 +1,6 @@
 package frederic
 
-//TODO: -common web page, api auth logic
-//      -figure out testing of update pages
+//TODO: -figure out testing of update pages
 
 import (
 	"html/template"
@@ -135,43 +134,57 @@ func age(dobs string) string {
 	return strconv.FormatFloat(agens.Hours()/float64(24*365), 'f', 0, 64)
 }
 
-func homepage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-	u := user.Current(c)
-	if u == nil {
+func webuserOK(c appengine.Context, w http.ResponseWriter, r *http.Request) bool {
+	if !userauthenticated(c) {
 		url, err := user.LoginURL(c, r.URL.String())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return false
 		}
 		w.Header().Set("Location", url)
 		w.WriteHeader(http.StatusFound)
+		return false
+	}
+	u := user.Current(c)
+	authzed, err := userauthorized(c, u.Email)
+	if err != nil {
+		c.Errorf("authorization error: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return false
+	}
+	if !authzed {
+		c.Warningf("authorization failure: %v", u.Email)
+		w.WriteHeader(http.StatusForbidden)
+		return false
+	}
+	return true
+}
+
+func homepage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	if !webuserOK(c, w, r) {
 		return
 	}
-	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
+
+	u := user.Current(c)
+	l, err := user.LogoutURL(c, "http://www.svdpsm.org/")
 	data := struct {
 		U, LogoutUrl string
 	}{
 		u.Email,
 		l,
 	}
-	err := templates.ExecuteTemplate(w, "home.html", data)
+	err = templates.ExecuteTemplate(w, "home.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 func listclientspage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-	u := user.Current(c)
-	if u == nil {
-		url, err := user.LoginURL(c, r.URL.String())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Location", url)
-		w.WriteHeader(http.StatusFound)
+	if !webuserOK(c, w, r) {
 		return
 	}
+
+	u := user.Current(c)
 
 	q := datastore.NewQuery("SVDPClient")
 	clients := make([]client, 0, 10)
@@ -203,17 +216,11 @@ func listclientspage(c appengine.Context, w http.ResponseWriter, r *http.Request
 }
 
 func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-	u := user.Current(c)
-	if u == nil {
-		url, err := user.LoginURL(c, r.URL.String())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Location", url)
-		w.WriteHeader(http.StatusFound)
+	if !webuserOK(c, w, r) {
 		return
 	}
+
+	u := user.Current(c)
 
 	re, err := regexp.Compile("[0-9]+")
 	if err != nil {
@@ -269,17 +276,11 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 }
 
 func newclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-	u := user.Current(c)
-	if u == nil {
-		url, err := user.LoginURL(c, r.URL.String())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Location", url)
-		w.WriteHeader(http.StatusFound)
+	if !webuserOK(c, w, r) {
 		return
 	}
+
+	u := user.Current(c)
 
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
 
@@ -300,17 +301,11 @@ func newclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 }
 
 func editclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-	u := user.Current(c)
-	if u == nil {
-		url, err := user.LoginURL(c, r.URL.String())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Location", url)
-		w.WriteHeader(http.StatusFound)
+	if !webuserOK(c, w, r) {
 		return
 	}
+
+	u := user.Current(c)
 
 	re, err := regexp.Compile("[0-9]+")
 	if err != nil {
@@ -352,17 +347,11 @@ func editclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request)
 }
 
 func recordvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-	u := user.Current(c)
-	if u == nil {
-		url, err := user.LoginURL(c, r.URL.String())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Location", url)
-		w.WriteHeader(http.StatusFound)
+	if !webuserOK(c, w, r) {
 		return
 	}
+
+	u := user.Current(c)
 
 	re, err := regexp.Compile("[0-9]+")
 	idstr := re.FindString(r.URL.Path)

@@ -1,7 +1,5 @@
 package frederic
 
-//TODO: -common web page, api auth logic
-
 import (
 	"encoding/json"
 	"fmt"
@@ -15,10 +13,21 @@ import (
 	"appengine/user"
 )
 
-func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-	u := user.Current(c)
-	if u == nil {
+func apiuserOK(c appengine.Context, w http.ResponseWriter) bool {
+	if !userauthenticated(c) {
 		w.WriteHeader(http.StatusUnauthorized)
+		return false
+	}
+
+	if ok, _ := userauthorized(c, user.Current(c).Email); !ok {
+		w.WriteHeader(http.StatusForbidden)
+		return false
+	}
+	return true
+}
+
+func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	if !apiuserOK(c, w) {
 		return
 	}
 
@@ -52,9 +61,7 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-	u := user.Current(c)
-	if u == nil {
-		w.WriteHeader(http.StatusUnauthorized)
+	if !apiuserOK(c, w) {
 		return
 	}
 
@@ -122,9 +129,7 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func addvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-	u := user.Current(c)
-	if u == nil {
-		w.WriteHeader(http.StatusUnauthorized)
+	if !apiuserOK(c, w) {
 		return
 	}
 
@@ -193,11 +198,10 @@ func addvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func getallclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-	u := user.Current(c)
-	if u == nil {
-		w.WriteHeader(http.StatusUnauthorized)
+	if !apiuserOK(c, w) {
 		return
 	}
+
 	q := datastore.NewQuery("SVDPClient")
 	clients := make([]client, 0, 10)
 	ids, err := q.GetAll(c, &clients)
@@ -227,11 +231,10 @@ func getallclients(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 }
 
 func getallvisits(c appengine.Context, w http.ResponseWriter, r *http.Request) {
-	u := user.Current(c)
-	if u == nil {
-		w.WriteHeader(http.StatusUnauthorized)
+	if !apiuserOK(c, w) {
 		return
 	}
+
 	re, err := regexp.Compile("[0-9]+")
 	idstr := re.FindString(r.URL.Path)
 	c.Debugf("parsed id %v from %v", idstr, r.URL.Path)

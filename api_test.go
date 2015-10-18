@@ -39,6 +39,7 @@ func TestAddClient(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org")
 
 	addclient(c, w, req)
 
@@ -93,6 +94,8 @@ func TestGetAllClients(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org")
+
 	getallclients(c, w, req)
 
 	code := w.Code
@@ -163,6 +166,7 @@ func TestGetAllVisits(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c := appengine.NewContext(req)
+		addTestUser(c, "test@example.org")
 
 		addvisit(c, w, req)
 
@@ -247,6 +251,7 @@ func TestUpdateClient(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org")
 
 	editclient(c, w, req)
 
@@ -303,6 +308,7 @@ func TestAddVisit(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org")
 
 	addvisit(c, w, req)
 
@@ -369,6 +375,7 @@ func TestUpdateInvalidData(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org")
 
 	editclient(c, w, req)
 
@@ -406,6 +413,7 @@ func TestUpdateMissingId(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org")
 
 	editclient(c, w, req)
 
@@ -443,6 +451,7 @@ func TestUpdateMalformedId(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org")
 
 	editclient(c, w, req)
 
@@ -466,11 +475,12 @@ func addclienttodb(clt client, inst aetest.Instance) (id int64, err error) {
 		"Content-Type": {"application/json"},
 	}
 
-	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	aetest.Login(&user.User{Email: "adduser@example.org"}, req)
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
 
+	addTestUser(c, "adduser@example.org")
 	addclient(c, w, req)
 
 	code := w.Code
@@ -488,4 +498,45 @@ func addclienttodb(clt client, inst aetest.Instance) (id int64, err error) {
 			string(body), err))
 	}
 	return newrec.Id, nil
+}
+
+func TestAuthorization(t *testing.T) {
+	c, err := aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create context: %v", err)
+	}
+	defer c.Close()
+
+	addTestUser(c, "frederic@example.org")
+
+	auth, err := userauthorized(c, "frederic@example.org")
+
+	if err != nil {
+		t.Fatalf("auth error: %v", err.Error())
+	}
+	if !auth {
+		t.Errorf("auth failed for frederic@example.org")
+	}
+	auth, err = userauthorized(c, "fred@example.org")
+
+	if err != nil {
+		t.Fatalf("auth error: %v", err.Error())
+	}
+	if auth {
+		t.Errorf("auth worked and shouldn't have for fred@example.org")
+	}
+}
+
+func addTestUser(c appengine.Context, u string) error {
+	newuser := &appuser{Email: u}
+
+	id, err := datastore.Put(c, datastore.NewIncompleteKey(c, "SVDPUser",
+		nil), newuser)
+
+	c.Infof("id=%v, err=%v", id, err)
+	if err != nil {
+		c.Errorf("Failed to put user: %v", err)
+		return err
+	}
+	return nil
 }

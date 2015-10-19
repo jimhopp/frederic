@@ -1,6 +1,8 @@
 package frederic
 
 import (
+	"os"
+
 	"appengine"
 	"appengine/datastore"
 	"appengine/user"
@@ -17,6 +19,9 @@ func userauthenticated(c appengine.Context) bool {
 }
 
 func userauthorized(c appengine.Context, email string) (bool, error) {
+	if v := os.Getenv("BOOTSTRAP_USER"); v != "" && v == email {
+		return true, nil
+	}
 	q := datastore.NewQuery("SVDPUser").Filter("Email=", email)
 	cnt, err := q.Count(c)
 	c.Debugf("count for user %v = %v", email, cnt)

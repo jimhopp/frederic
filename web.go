@@ -112,11 +112,14 @@ func init() {
 	http.Handle("/editclient/", ContextHandler{editclientpage})
 	http.Handle("/addclient", ContextHandler{newclientpage})
 	http.Handle("/recordvisit/", ContextHandler{recordvisitpage})
+	http.Handle("/users", ContextHandler{edituserspage})
 	http.Handle("/api/client", ContextHandler{addclient})
 	http.Handle("/api/client/", ContextHandler{editclient})
 	http.Handle("/api/visit/", ContextHandler{addvisit})
 	http.Handle("/api/getallclients", ContextHandler{getallclients})
 	http.Handle("/api/getallvisits/", ContextHandler{getallvisits})
+	http.Handle("/api/users", ContextHandler{getallusers})
+	http.Handle("/api/users/edit", ContextHandler{editusers})
 }
 
 var funcMap = template.FuncMap{"age": age}
@@ -388,6 +391,45 @@ func recordvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request
 		vst,
 	}
 	err = templates.ExecuteTemplate(w, "recordvisit.html", data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func edituserspage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	if !webuserOK(c, w, r) {
+		return
+	}
+
+	u := user.Current(c)
+
+	q := datastore.NewQuery("SVDPUser").Order("Email")
+	users := make([]appuser, 0, 10)
+	keys, err := q.GetAll(c, &users)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var resp useredit
+	resp.Aus = make([]appuser, len(keys))
+	resp.Ids = make([]int64, len(keys))
+
+	for i := 0; i < len(keys); i++ {
+		resp.Aus[i].Email = users[i].Email
+		resp.Ids[i] = keys[i].IntID()
+	}
+	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
+
+	data := struct {
+		U, LogoutUrl string
+		Users        useredit
+	}{
+		u.Email,
+		l,
+		resp,
+	}
+	err = templates.ExecuteTemplate(w, "users.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

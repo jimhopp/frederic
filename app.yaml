@@ -14,4 +14,5 @@ handlers:
   script: _go_app
   login: required
   secure: always
-
+env_variables:
+  BOOTSTRAP_USER: 'jimhopp@gmail.com'

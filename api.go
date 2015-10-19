@@ -13,6 +13,12 @@ import (
 	"appengine/user"
 )
 
+type useredit struct {
+	Ids        []int64
+	Aus        []appuser
+	DeletedIds []int64
+}
+
 func apiuserOK(c appengine.Context, w http.ResponseWriter) bool {
 	if !userauthenticated(c) {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -287,5 +293,103 @@ func getallvisits(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Fprint(w, string(b))
+}
+
+func editusers(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	if !apiuserOK(c, w) {
+		return
+	}
+
+	var b1 useredit
+
+	body := make([]byte, r.ContentLength)
+	_, err := r.Body.Read(body)
+	err = json.Unmarshal(body, &b1)
+	c.Infof("api/editusers: got %v\n", string(body))
+	c.Infof("api/editusers: unmarshaled into %v\n", b1)
+	if err != nil {
+		c.Errorf("unmarshaling error:%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(b1.Ids) < len(b1.Aus) {
+		c.Errorf("%v ids but %v users", len(b1.Ids), len(b1.Aus))
+		http.Error(w,
+			fmt.Sprintf("Must have as many Ids as Aus (sent %v  Ids but %v Aus)", len(b1.Ids), len(b1.Aus)),
+			http.StatusBadRequest)
+		return
+	}
+
+	keys := make([]*datastore.Key, len(b1.Aus))
+	for i := 0; i < len(b1.Aus); i++ {
+		keys[i] = datastore.NewKey(c, "SVDPUser", "", b1.Ids[i],
+			nil)
+	}
+	newkeys, err := datastore.PutMulti(c, keys, b1.Aus)
+	if err != nil {
+		c.Errorf("datastore error on PutMulti: :%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for i := 0; i < len(newkeys); i++ {
+		b1.Ids[i] = newkeys[i].IntID()
+	}
+
+	if len(b1.DeletedIds) > 0 {
+		deletedkeys := make([]*datastore.Key, len(b1.DeletedIds))
+		for i := 0; i < len(b1.DeletedIds); i++ {
+			deletedkeys[i] = datastore.NewKey(c, "SVDPUser", "",
+				b1.DeletedIds[i], nil)
+		}
+		if err = datastore.DeleteMulti(c, deletedkeys); err != nil {
+			c.Errorf("error deleting users: %v", err)
+		}
+	}
+
+	nb, err := json.Marshal(&b1)
+	if err != nil {
+		c.Errorf("marshaling error:%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	c.Infof("returning %v\n", string(nb))
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, string(nb))
+}
+
+func getallusers(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	if !apiuserOK(c, w) {
+		return
+	}
+
+	q := datastore.NewQuery("SVDPUser").Order("Email")
+	//TODO size more appropriately - use Count() query?
+	aus := make([]appuser, 0, 10)
+
+	keys, err := q.GetAll(c, &aus)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	c.Debugf("getallusers: got keys %v\n", keys)
+
+	var resp useredit
+	resp.Aus = aus
+	resp.Ids = make([]int64, len(keys))
+	for i := 0; i < len(keys); i++ {
+		resp.Ids[i] = keys[i].IntID()
+	}
+
+	c.Debugf("getallusers: useredit = %v", resp)
+	b, err := json.Marshal(resp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(b))
 }

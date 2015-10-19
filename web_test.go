@@ -24,6 +24,8 @@ var endpoints = []EndpointTest{
 	{"/api/visit/", addvisit, http.StatusUnauthorized},
 	{"/api/getallclients", getallclients, http.StatusUnauthorized},
 	{"/api/getallvisits/", getallvisits, http.StatusUnauthorized},
+	{"/api/users/", getallusers, http.StatusUnauthorized},
+	{"/api/users/edit", editusers, http.StatusUnauthorized},
 	{"/", homepage, http.StatusFound},
 	{"/listclients", listclientspage, http.StatusFound},
 	{"/client", getclientpage, http.StatusFound},

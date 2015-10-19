@@ -1,0 +1,103 @@
+<html>
+  <title>St. Vincent de Paul (St. Charles Borromeo Conference) Userss</title>
+  {{ template "scripts" }}
+  <body class="main">
+   {{ template "header" . }}
+
+    <table>
+      <thead><tr><td colspan="3">Users</td></tr></thead>
+      <tbody id="users">
+      {{ range $i, $users := .Users.Aus }}
+        <tr>
+	  <td><input type="text" id="id{{ $i }}" name="id" value="{{ index $.Users.Ids $i }}" readonly="true"></td>
+          <td><input type="text" id="user{{ $i }}" name="user" value="{{ .Email }}"></td>
+	  <td><input type="button" name="rmuser" value="Remove"></td>
+        </tr>
+      {{ end }}
+	<tr><td colspan="3"><input type="button" id="adduser" value="Add another user"></td></tr>
+      </tbody>
+    </table>
+
+      <p id="status" class="hidden">Empty status</p>
+      <form>
+        <input type="submit" id="submit" class="submit">
+      </form>
+  <script>
+   var deletedIds = new Array();
+   
+   $( document ).ready(function() {
+    console.log( 'ready!' );
+
+    var clickedrm = function(evt) {
+      var row = $( evt.target ).parentsUntil('tbody', 'tr');
+      console.log('clickedrm row=', row);
+      var id = row.find('input[name="id"]' );
+      if (id.length && id.val() != "0") {
+        deletedIds.push(Number.parseInt(id.val()));
+      }
+      row.remove();
+    }
+
+    var clickedsubmit = function(evt) {
+
+      var users = new Object();
+      users.Aus = new Array();
+      users.Ids = new Array();
+      users.DeletedIds = deletedIds;
+      var moreusers = true;
+      var i = 0;
+      while (moreusers) {
+        var u = $( 'input#user' + i );
+        if (u.length) {
+	  user = new Object();
+	  user.Email = u.val(); 
+          users.Aus.push(user);   
+          var id = $( 'input#id' + i);
+          if (id.length && id.val().length > 0) {
+            users.Ids.push(Number.parseInt(id.val(), 10))
+          }  
+	} else {
+          moreusers = false;
+        }
+        i++;
+      }
+
+      evt.preventDefault();
+      $.ajax({
+        method: "POST",
+        url: "/api/users/edit",
+        processData: false,
+        mimeType: "application/json",
+        data: JSON.stringify(users)
+})
+  .done(function(  data, textStatus, jqXHR ) {
+    $( '#status' ).text('Applied changes successfully!').removeClass('hidden');
+  })
+  .fail(function( jqXHR, textStatus, errorThrown ) {
+    alert( "failure: " + textStatus + ',' + errorThrown + JSON.stringify(jqXHR));
+  });
+    }
+
+    var clickedadd = function(evt) {
+      evt.preventDefault();
+      console.log('clickedadd');
+      var rows = $( '#users tr' );
+      var newrownum = rows.length -1;
+      var newrow = $( '<tr><td><input type="text" id="id' + newrownum + '" name="id" value="0" readonly="true"></td><td><input type="text" id="user' + newrownum + 
+        '" name="user' + newrownum + '" value=""></td></tr>');
+      var rm = $( '<input type="button" name="rmuser" value="Remove">' );
+      rm.on('click', clickedrm);
+      var rmcl = $( '<td></td>' ).append(rm);
+      newrow.append(rmcl);
+      rows.last().before(newrow);
+    }
+
+
+    $( 'input#submit' ).on('click', clickedsubmit);
+    $( 'input#adduser' ).on('click', clickedadd);
+    $( 'input[name="rmuser"' ).on('click', clickedrm);
+
+      });
+  </script>
+  </body>
+</html>

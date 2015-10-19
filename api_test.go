@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -507,9 +508,21 @@ func TestAuthorization(t *testing.T) {
 	}
 	defer c.Close()
 
+	err = os.Setenv("BOOTSTRAP_USER", "hello@example.org")
+	if err != nil {
+		t.Fatalf("failed to set BOOTSTRAP_USER: %v", err.Error())
+	}
+
+	auth, err := userauthorized(c, "hello@example.org")
+	if err != nil {
+		t.Fatalf("auth error: %v", err.Error())
+	}
+	if !auth {
+		t.Errorf("auth failed for bootstrap user")
+	}
 	addTestUser(c, "frederic@example.org")
 
-	auth, err := userauthorized(c, "frederic@example.org")
+	auth, err = userauthorized(c, "frederic@example.org")
 
 	if err != nil {
 		t.Fatalf("auth error: %v", err.Error())
@@ -527,7 +540,321 @@ func TestAuthorization(t *testing.T) {
 	}
 }
 
-func addTestUser(c appengine.Context, u string) error {
+func TestAddUsers(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	data := strings.NewReader(`{"Ids": [0, 0], "Aus": [{"Email": "fred1@example.org"}, {"Email": "fred2@example.org"}], "DeletedIds": []}`)
+	req, err := inst.NewRequest("PUT", "/editusers", data)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org")
+
+	editusers(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusCreated)
+	}
+	body := w.Body.Bytes()
+	c.Infof("got response %v", string(body))
+
+	var b2 useredit
+	err = json.Unmarshal(body, &b2)
+	if err != nil {
+		t.Fatalf("unable to unmarshal: %v", err)
+	}
+	e := [2]string{"fred1@example.org", "fred2@example.org"}
+	for i := 0; i < len(e); i++ {
+		a, err := userauthorized(c, e[i])
+		if err != nil {
+			t.Fatalf("authorization error: %v", err)
+		}
+		if !a {
+			t.Errorf("user %v not authorized", e[i])
+		}
+	}
+}
+
+func TestAddUsersMissingIds(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	data := strings.NewReader(`{"Ids": [], "Aus": [{"Email": "fred1@example.org"}, {"Email": "fred2@example.org"}], "DeletedIds": []}`)
+	req, err := inst.NewRequest("PUT", "/editusers", data)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org")
+
+	editusers(c, w, req)
+
+	code := w.Code
+	if code != http.StatusBadRequest {
+		t.Errorf("got code %v, want %v", code, http.StatusBadRequest)
+	}
+	body := w.Body.Bytes()
+	c.Infof("got response %v", string(body))
+
+}
+
+func TestEditUsers(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	data := strings.NewReader(`{"Ids": [0, 0], "Aus": [{"Email": "fred1@example.org"}, {"Email": "fred2@example.org"}], "DeletedIds": []}`)
+	req, err := inst.NewRequest("PUT", "/editusers", data)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org")
+
+	editusers(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusCreated)
+	}
+	body := w.Body.Bytes()
+	c.Infof("got response %v", string(body))
+
+	var b2 useredit
+	err = json.Unmarshal(body, &b2)
+	if err != nil {
+		t.Fatalf("unable to unmarshal: %v", err)
+	}
+	b2.Aus[0].Email = "fred3@example.org"
+	b2.Aus[1].Email = "fred4@example.org"
+
+	data1, err := json.Marshal(&b2)
+	req1, err := inst.NewRequest("PUT", "/editusers", bytes.NewReader(data1))
+	if err != nil {
+		t.Fatalf("Failed to create req1: %v", err)
+	}
+	req1.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req1)
+
+	w1 := httptest.NewRecorder()
+
+	editusers(c, w1, req1)
+
+	code = w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusCreated)
+	}
+	body1 := w.Body.Bytes()
+	c.Infof("got response %v", string(body1))
+
+	var b3 useredit
+	err = json.Unmarshal(body, &b3)
+	if err != nil {
+		t.Fatalf("unable to unmarshal: %v", err)
+	}
+	e1 := [2]string{"fred3@example.org", "fred4@example.org"}
+	for i := 0; i < len(e1); i++ {
+		a, err := userauthorized(c, e1[i])
+		if err != nil {
+			t.Fatalf("authorization error: %v", err)
+		}
+		if !a {
+			t.Errorf("user %v not authorized", e1[i])
+		}
+	}
+}
+
+func TestDeleteUsers(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	data := strings.NewReader(`{"Ids": [0, 0], "Aus": [{"Email": "fred1@example.org"}, {"Email": "fred2@example.org"}], "DeletedIds": []}`)
+	req, err := inst.NewRequest("PUT", "/editusers", data)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org")
+
+	editusers(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusCreated)
+	}
+	body := w.Body.Bytes()
+	c.Infof("got response %v", string(body))
+
+	var b2 useredit
+	err = json.Unmarshal(body, &b2)
+	if err != nil {
+		t.Fatalf("unable to unmarshal: %v", err)
+	}
+	id0 := b2.Ids[0]
+	id1 := b2.Ids[1]
+
+	b2.Aus = make([]appuser, 1)
+	b2.Ids = make([]int64, 1)
+	b2.DeletedIds = make([]int64, 1)
+
+	b2.Aus[0].Email = "fred4@example.org"
+	b2.Ids[0] = id1
+	b2.DeletedIds[0] = id0
+
+	data1, err := json.Marshal(&b2)
+	req1, err := inst.NewRequest("PUT", "/editusers", bytes.NewReader(data1))
+	if err != nil {
+		t.Fatalf("Failed to create req1: %v", err)
+	}
+	req1.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req1)
+
+	w1 := httptest.NewRecorder()
+
+	editusers(c, w1, req1)
+
+	code = w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusCreated)
+	}
+	body1 := w.Body.Bytes()
+	c.Infof("got response %v", string(body1))
+
+	var b3 useredit
+	err = json.Unmarshal(body, &b3)
+	if err != nil {
+		t.Fatalf("unable to unmarshal: %v", err)
+	}
+	a, err := userauthorized(c, "fred4@example.org")
+	if err != nil {
+		t.Fatalf("authorization error: %v", err)
+	}
+	if !a {
+		t.Errorf("user %v not authorized", "fred4@example.org")
+	}
+	a, err = userauthorized(c, "fred3@example.org")
+	if err != nil {
+		t.Fatalf("authorization error: %v", err)
+	}
+	if a {
+		t.Errorf("user %v is authorized and should not be", "fred3@example.org")
+	}
+}
+
+func TestGetUsers(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	data := strings.NewReader(`{"Ids": [0, 0], "Aus": [{"Email": "fred1@example.org"}, {"Email": "fred2@example.org"}], "DeletedIds": []}`)
+	req, err := inst.NewRequest("PUT", "/editusers", data)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org")
+
+	editusers(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusCreated)
+	}
+	body := w.Body.Bytes()
+	c.Infof("got response %v", string(body))
+
+	req1, err := inst.NewRequest("GET", "/api/clients", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req1: %v", err)
+	}
+	req1.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req1)
+
+	w1 := httptest.NewRecorder()
+
+	getallusers(c, w1, req1)
+
+	code = w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusCreated)
+	}
+	body1 := w.Body.Bytes()
+	c.Infof("got response %v", string(body1))
+
+	var b3 useredit
+	err = json.Unmarshal(body, &b3)
+	if err != nil {
+		t.Fatalf("unable to unmarshal: %v", err)
+	}
+	e1 := [2]string{"fred1@example.org", "fred2@example.org"}
+	for i := 0; i < len(e1); i++ {
+		if e1[i] != b3.Aus[i].Email {
+			t.Errorf("user %v not in user list", e1[i])
+		}
+	}
+}
+
+func addTestUser(c appengine.Context, u string) (*datastore.Key, error) {
 	newuser := &appuser{Email: u}
 
 	id, err := datastore.Put(c, datastore.NewIncompleteKey(c, "SVDPUser",
@@ -536,7 +863,7 @@ func addTestUser(c appengine.Context, u string) error {
 	c.Infof("id=%v, err=%v", id, err)
 	if err != nil {
 		c.Errorf("Failed to put user: %v", err)
-		return err
+		return nil, err
 	}
-	return nil
+	return id, nil
 }

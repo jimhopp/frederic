@@ -40,7 +40,7 @@ func TestAddClient(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	addclient(c, w, req)
 
@@ -95,7 +95,7 @@ func TestGetAllClients(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	getallclients(c, w, req)
 
@@ -167,7 +167,7 @@ func TestGetAllVisits(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c := appengine.NewContext(req)
-		addTestUser(c, "test@example.org")
+		addTestUser(c, "test@example.org", true)
 
 		addvisit(c, w, req)
 
@@ -252,7 +252,7 @@ func TestUpdateClient(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	editclient(c, w, req)
 
@@ -309,7 +309,7 @@ func TestAddVisit(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	addvisit(c, w, req)
 
@@ -376,7 +376,7 @@ func TestUpdateInvalidData(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	editclient(c, w, req)
 
@@ -414,7 +414,7 @@ func TestUpdateMissingId(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	editclient(c, w, req)
 
@@ -452,7 +452,7 @@ func TestUpdateMalformedId(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	editclient(c, w, req)
 
@@ -481,7 +481,7 @@ func addclienttodb(clt client, inst aetest.Instance) (id int64, err error) {
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
 
-	addTestUser(c, "adduser@example.org")
+	addTestUser(c, "adduser@example.org", true)
 	addclient(c, w, req)
 
 	code := w.Code
@@ -520,7 +520,7 @@ func TestAuthorization(t *testing.T) {
 	if !auth {
 		t.Errorf("auth failed for bootstrap user")
 	}
-	addTestUser(c, "frederic@example.org")
+	addTestUser(c, "frederic@example.org", true)
 
 	auth, err = userauthorized(c, "frederic@example.org")
 
@@ -560,7 +560,7 @@ func TestAddUsers(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	editusers(c, w, req)
 
@@ -608,7 +608,7 @@ func TestAddUsersMissingIds(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	editusers(c, w, req)
 
@@ -641,7 +641,7 @@ func TestEditUsers(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	editusers(c, w, req)
 
@@ -699,6 +699,36 @@ func TestEditUsers(t *testing.T) {
 	}
 }
 
+func TestEditUsersNotAdmin(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	data := strings.NewReader(`{"Ids": [0, 0], "Aus": [{"Email": "fred1@example.org"}, {"Email": "fred2@example.org"}], "DeletedIds": []}`)
+	req, err := inst.NewRequest("PUT", "/editusers", data)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org", false)
+
+	editusers(c, w, req)
+
+	code := w.Code
+	if code != http.StatusForbidden {
+		t.Errorf("got code %v, want %v", code, http.StatusForbidden)
+	}
+}
+
 func TestDeleteUsers(t *testing.T) {
 	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {
@@ -719,7 +749,7 @@ func TestDeleteUsers(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	editusers(c, w, req)
 
@@ -809,7 +839,7 @@ func TestGetUsers(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	editusers(c, w, req)
 
@@ -854,13 +884,13 @@ func TestGetUsers(t *testing.T) {
 	}
 }
 
-func addTestUser(c appengine.Context, u string) (*datastore.Key, error) {
-	newuser := &appuser{Email: u}
+func addTestUser(c appengine.Context, u string, admin bool) (*datastore.Key, error) {
+	newuser := &appuser{Email: u, IsAdmin: admin}
 
 	id, err := datastore.Put(c, datastore.NewIncompleteKey(c, "SVDPUser",
 		nil), newuser)
 
-	c.Infof("id=%v, err=%v", id, err)
+	c.Infof("id=%v, appuser=%v, err=%v", id, newuser, err)
 	if err != nil {
 		c.Errorf("Failed to put user: %v", err)
 		return nil, err

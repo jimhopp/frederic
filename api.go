@@ -301,10 +301,19 @@ func editusers(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	u := user.Current(c)
+	admin, err := useradmin(c, u.Email)
+	if !admin {
+		c.Errorf("user %v is not admin", u.Email)
+		http.Error(w, "Sorry, you must be an admin user and you're not",
+			http.StatusForbidden)
+		return
+	}
+
 	var b1 useredit
 
 	body := make([]byte, r.ContentLength)
-	_, err := r.Body.Read(body)
+	_, err = r.Body.Read(body)
 	err = json.Unmarshal(body, &b1)
 	c.Infof("api/editusers: got %v\n", string(body))
 	c.Infof("api/editusers: unmarshaled into %v\n", b1)

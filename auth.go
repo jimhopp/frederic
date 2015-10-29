@@ -1,6 +1,7 @@
 package frederic
 
 import (
+	"fmt"
 	"os"
 
 	"appengine"
@@ -9,7 +10,8 @@ import (
 )
 
 type appuser struct {
-	Email string
+	Email   string
+	IsAdmin bool
 	//multi-conference support?
 }
 
@@ -32,4 +34,24 @@ func userauthorized(c appengine.Context, email string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func useradmin(c appengine.Context, email string) (bool, error) {
+	if v := os.Getenv("BOOTSTRAP_USER"); v != "" && v == email {
+		// bootstrap user is admin by definition
+		return true, nil
+	}
+	u := []appuser{}
+	q := datastore.NewQuery("SVDPUser").Filter("Email=", email)
+	_, err := q.GetAll(c, &u)
+	c.Debugf("user %v", u)
+	if err != nil {
+		return false, err
+	}
+	if len(u) == 0 {
+		return false, fmt.Errorf("no user with email %v found",
+			email)
+	}
+	return u[0].IsAdmin, nil
+
 }

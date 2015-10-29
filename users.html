@@ -5,12 +5,13 @@
    {{ template "header" . }}
 
     <table>
-      <thead><tr><td colspan="3">Users</td></tr></thead>
+      <thead><tr><th>Id</th><th>Email</th><th>Admin?</th><th></th></tr></thead>
       <tbody id="users">
       {{ range $i, $users := .Users.Aus }}
         <tr>
 	  <td><input type="text" id="id{{ $i }}" name="id" value="{{ index $.Users.Ids $i }}" readonly="true"></td>
           <td><input type="text" id="user{{ $i }}" name="user" value="{{ .Email }}"></td>
+          <td><input type="checkbox" id="admin{{ $i }}" name="admin"{{ if .IsAdmin }} checked="checked"{{ end }}></td>
 	  <td><input type="button" name="rmuser" value="Remove"></td>
         </tr>
       {{ end }}
@@ -51,6 +52,10 @@
         if (u.length) {
 	  user = new Object();
 	  user.Email = u.val(); 
+          var a = $( 'input#admin' + i );
+          if (a.length) {
+	  	user.IsAdmin = a.is(":checked");
+          } 
           users.Aus.push(user);   
           var id = $( 'input#id' + i);
           if (id.length && id.val().length > 0) {
@@ -83,8 +88,11 @@
       console.log('clickedadd');
       var rows = $( '#users tr' );
       var newrownum = rows.length -1;
-      var newrow = $( '<tr><td><input type="text" id="id' + newrownum + '" name="id" value="0" readonly="true"></td><td><input type="text" id="user' + newrownum + 
-        '" name="user' + newrownum + '" value=""></td></tr>');
+      var newrow = $( '<tr><td><input type="text" id="id' + newrownum 
+        + '" name="id" value="0" readonly="true"></td><td><input type="text" id="user' 
+        + newrownum + '" name="user' + newrownum 
+        + '" value=""></td><td><input type="checkbox" id="admin"' + newrownum
+        + '" name="admin"></td></tr>');
       var rm = $( '<input type="button" name="rmuser" value="Remove">' );
       rm.on('click', clickedrm);
       var rmcl = $( '<td></td>' ).append(rm);

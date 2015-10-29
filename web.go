@@ -403,6 +403,18 @@ func edituserspage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 
 	u := user.Current(c)
 
+	admin, err := useradmin(c, u.Email)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !admin {
+		http.Error(w, "must be admin to access users page",
+			http.StatusForbidden)
+		return
+	}
+
 	q := datastore.NewQuery("SVDPUser").Order("Email")
 	users := make([]appuser, 0, 10)
 	keys, err := q.GetAll(c, &users)
@@ -415,8 +427,8 @@ func edituserspage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	resp.Aus = make([]appuser, len(keys))
 	resp.Ids = make([]int64, len(keys))
 
-	for i := 0; i < len(keys); i++ {
-		resp.Aus[i].Email = users[i].Email
+	for i := range keys {
+		resp.Aus[i] = users[i]
 		resp.Ids[i] = keys[i].IntID()
 	}
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")

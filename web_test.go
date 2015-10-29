@@ -50,7 +50,7 @@ func TestHomePage(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	homepage(c, w, req)
 
@@ -99,7 +99,7 @@ func TestListClientsPage(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	listclientspage(c, w, req)
 
@@ -150,7 +150,7 @@ func TestGetClientPage(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	getclientpage(c, w, req)
 
@@ -188,7 +188,7 @@ func TestGetClientNotFound(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	getclientpage(c, w, req)
 
@@ -222,7 +222,7 @@ func TestGetClientMissingParm(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	getclientpage(c, w, req)
 
@@ -265,7 +265,7 @@ func TestEditClientPage(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	editclientpage(c, w, req)
 
@@ -303,7 +303,7 @@ func TestAddClientPage(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	newclientpage(c, w, req)
 
@@ -402,7 +402,7 @@ func TestAddVisitPage(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	recordvisitpage(c, w, req)
 
@@ -452,7 +452,7 @@ func TestAddVisitPageForNonexistentClient(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	recordvisitpage(c, w, req)
 
@@ -487,7 +487,7 @@ func TestAddVisitPageMissingClient(t *testing.T) {
 	w := httptest.NewRecorder()
 	c := appengine.NewContext(req)
 
-	addTestUser(c, "test@example.org")
+	addTestUser(c, "test@example.org", true)
 
 	recordvisitpage(c, w, req)
 
@@ -502,4 +502,86 @@ func TestAddVisitPageMissingClient(t *testing.T) {
 		t.Errorf("got body %v, did not contain %v", string(body),
 			string(expected))
 	}
+}
+
+func TestListUsersPage(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newusers := []appuser{
+		{Email: "frederic@example.org", IsAdmin: true},
+		{Email: "j@example.org", IsAdmin: false},
+		{Email: "x@example.org", IsAdmin: false},
+	}
+
+	req, err := inst.NewRequest("GET", "/users", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org", true)
+
+	for i := range newusers {
+		_, err := addTestUser(c, newusers[i].Email,
+			newusers[i].IsAdmin)
+		if err != nil {
+			t.Fatalf("unable to add user: %v", err)
+		}
+	}
+
+	edituserspage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	body := w.Body.Bytes()
+	rows := []string{"frederic@example.org",
+		"j@example.org",
+		"x@example.org",
+		`<input type="checkbox" id="admin0" name="admin" checked="checked">`,
+		`<input type="checkbox" id="admin1" name="admin">`,
+		// test@example.org is user #3
+		`<input type="checkbox" id="admin3" name="admin">`,
+	}
+	for i := range rows {
+		if !bytes.Contains(body, []byte(rows[i])) {
+			t.Errorf("got body %v, did not contain %v", string(body), rows[i])
+		}
+	}
+}
+
+func TestListUsersPageNotAdmin(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	req, err := inst.NewRequest("GET", "/users", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org", false)
+
+	edituserspage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusForbidden {
+		t.Errorf("got code %v, want %v", code, http.StatusForbidden)
+	}
+
 }

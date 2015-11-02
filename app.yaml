@@ -15,4 +15,4 @@ handlers:
   login: required
   secure: always
 env_variables:
-  BOOTSTRAP_USER: 'jimhopp@gmail.com'
+  BOOTSTRAP_USER: 'test@example.org'

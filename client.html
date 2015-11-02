@@ -4,23 +4,48 @@
   <body class="main">
    {{ template "header" . }}
    <p id="status" class="hidden">Empty status</p>
+        <div class="box">
         <h4>Client</h4>
-        <label>First Name:<input type="text" id="fname" value="{{ .Clientrec.Clt.Firstname }}" name="FirstName" disabled=true></label>
-        <label>Last Name:<input type="text" id="lname" value="{{ .Clientrec.Clt.Lastname }}" name="LastName" disabled=true></label>
-        <label>DOB:<input type="date" id="dob" value="{{ .Clientrec.Clt.DOB }}" name="dob" disabled=true></label>
+        <label class="contained">First Name:<input type="text" id="fname" value="{{ .Clientrec.Clt.Firstname }}" name="FirstName" disabled="true"></label>
+        <label>Last Name:<input type="text" id="lname" value="{{ .Clientrec.Clt.Lastname }}" name="LastName" disabled="true"></label>
+        <label>DOB:<input type="date" id="dob" value="{{ .Clientrec.Clt.DOB }}" name="dob" disabled="true"></label>
         <br>
-        <label>Address:<input type="text" id="address" value="{{ .Clientrec.Clt.Address }}" name="Address" disabled=true></label>
-         <label>Apt:<input type="text" id="apt" value="{{ .Clientrec.Clt.Apt }}" name="apt" disabled=true></label>
-        <label>Phone:<input type="text" id="phnum" value="{{ .Clientrec.Clt.Phonenum }}" name="phnum" disabled=true></label>
+        <label class="contained">Address:<input type="text" id="address" value="{{ .Clientrec.Clt.Address }}" name="Address" disabled="true"></label>
+        <label>Cross-street:<input type="text" id="crossstreet" value="{{ .Clientrec.Clt.CrossStreet }}" name="CrossStreet" disabled="true"></label>
+         <label>Apt:<input type="text" id="apt" value="{{ .Clientrec.Clt.Apt }}" name="apt" disabled="true"></label>
         <br>
-        <label>Family Size:<input type="text" id="famsize" value="" name="famsize" disabled=true></label>
-        <label>Other Adults - Male:<input type="text" id="addlmales" value="{{ .Clientrec.Clt.Addlmales }}" name="addlmales" disabled=true></label>
-        <label>Other Adults - Female:<input type="text" id="addlfemales" value="{{ .Clientrec.Clt.Addlfemales }}" name="addlfemales" disabled=true></label>
+        <label class="contained">Phone:<input type="text" id="phnum" value="{{ .Clientrec.Clt.Phonenum }}" name="phnum" disabled="true"></label>
+        <label>Alt Phone:<input type="text" id="aphnum" value="{{ .Clientrec.Clt.Altphonenum }}" name="aphnum" disabled="true"></label>
+        <label>Alt Phone Description:<input type="text" id="aphdesc" value="{{ .Clientrec.Clt.Altphonedesc }}" name="aphdesc" disabled="true"></label>
         <br>
-        <h4>Children</h4>
-        <table id="fammbrs">
+        <label class="contained">Referred By:<select id="referred" name="referred" disabled="true">
+            <option value="districtofc" {{ if eq "districtofc" .Clientrec.Clt.ReferredBy }} selected{{end}}>District Office</option>
+            <option value="parish" {{ if eq "parish" .Clientrec.Clt.ReferredBy }} selected{{end}}>Parish</option>
+            <option value="other" {{ if eq "other" .Clientrec.Clt.ReferredBy }} selected{{end}}>Other</option>
+          </select>
+        </label>
+        <br>
+        <label class="contained">Notes:<textarea rows="4" cols="40"id="notes" disabled="true">{{ .Clientrec.Clt.Notes }}</textarea></label>
+        </div>
+        <br>
+        <br>
+	<div class="box">
+        <h4>Household</h4>
+        <label class="contained">Ethnicity:<input type="text" id="ethnicity" value="{{ .Clientrec.Clt.Ethnicity }}" name="ethnicity" disabled="true"></label>
+        <br>
+        <label class="contained">Adults - Male:<input type="text" size="2" id="adultmales" value="{{ .Clientrec.Clt.Adultmales }}" name="adultmales" disabled="true"></label>
+        <label>Adults - Female:<input type="text" size="2" id="adultfemales" value="{{ .Clientrec.Clt.Adultfemales }}" name="adultfemales" disabled="true"></label>
+        <label>Girls:<input type="text" size="2" id="girls" value="{{ .Clientrec.Clt.Fammbrs | girls }}" name="girls" disabled="true"></label>
+        <label>Boys:<input type="text" size="2" id="boys" value="{{ .Clientrec.Clt.Fammbrs | boys }}" name="boys" disabled="true"></label>
+        <label class="contained">Total:<input type="text" size="2" id="famsize" value="{{ .Clientrec.Clt | famSize }}" name="famsize" disabled="true"></label>
+        <br>
+        <br>
+        <table id="fammbrs" class="contained">
           <thead>
-            <th>Name</th><th>DOB</th><th>Age</th><th>Gender</th>
+              <th colspan="4">Children</th>
+          </thead>
+          <thead>
+              <th>Name</th><th>DOB</th><th>Age</th><th>Gender</th>
           </thead>
             {{ range $i, $fammbr := .Clientrec.Clt.Fammbrs }}
               <tr>
@@ -31,8 +56,11 @@
               </tr>
             {{ end }}
         </table>  
+        </div>
+        <br>
+        <div class="box">
         <h4>Visits</h4>
-        <table id="Visits">
+        <table class="contained" id="Visits">
           <thead>
             <th>Date</th>
 	    <th>Vincentians</th>
@@ -67,9 +95,11 @@
                 <td><input type="text" id="visit{{ $i }}.comment" name="visit{{ $i }}.comment" value="{{ .Comment }}" disabled="true"></td>
               </tr>
             {{ end }}
-        </table>  
+        </table>
+        </div>  
         <br>
-	<table>
+        <div class="box">
+	<table class="contained">
           <thead>
             <th colspan="2">Monthly Income</th>
             <th colspan="2">Monthly Expenses</th>
@@ -153,14 +183,12 @@
             <td><input type="text" id="totalexp" name="exptotal" disabled="true" value="{{ .Clientrec.Clt.Financials.TotalExpense }}"></td>
           </tr>
         </table>
+        </div>
    <a href="/editclient/{{ .Clientrec.Id }}">(edit)</a>
    <a href="/recordvisit/{{ .Clientrec.Id }}">(record visit)</a>
   <script>
    $( document ).ready(function() {
     console.log( 'ready!' );
-    $( 'input#famsize' ).val(1 + Number($( 'input#addlmales' ).val())
-      + Number($(' input#addlfemales' ).val()) 
-      + ($( 'table#fammbrs' ).get(0).rows.length - 1) );
    });
   </script>
   </body>

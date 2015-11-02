@@ -57,7 +57,9 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 
 	newrec := &clientrec{key.IntID(),
 		client{new.Firstname, new.Lastname, new.Address, new.Apt,
-			new.DOB, new.Phonenum, new.Addlmales, new.Addlfemales,
+			new.CrossStreet, new.DOB, new.Phonenum, new.Altphonenum,
+			new.Altphonedesc, new.Ethnicity, new.ReferredBy,
+			new.Notes, new.Adultmales, new.Adultfemales,
 			new.Fammbrs, new.Financials},
 	}
 	b, err := json.Marshal(newrec)
@@ -222,8 +224,11 @@ func getallclients(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	for i := 0; i < len(clients); i++ {
 		clientrecs[i] = clientrec{ids[i].IntID(), client{clients[i].Firstname,
 			clients[i].Lastname, clients[i].Address,
-			clients[i].Apt, clients[i].DOB, clients[i].Phonenum,
-			clients[i].Addlmales, clients[i].Addlfemales,
+			clients[i].Apt, clients[i].CrossStreet, clients[i].DOB,
+			clients[i].Phonenum, clients[i].Altphonenum,
+			clients[i].Altphonedesc, clients[i].Ethnicity,
+			clients[i].ReferredBy, clients[i].Notes,
+			clients[i].Adultmales, clients[i].Adultfemales,
 			clients[i].Fammbrs, clients[i].Financials}}
 	}
 	c.Debugf("getallclients: clientrecs = %v\n", clientrecs)

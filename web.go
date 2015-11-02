@@ -3,6 +3,8 @@ package frederic
 //TODO: -figure out testing of update pages
 
 import (
+	"errors"
+	"fmt"
 	"html/template"
 	"net/http"
 	"regexp"
@@ -19,16 +21,22 @@ type ContextHandler struct {
 }
 
 type client struct {
-	Firstname   string
-	Lastname    string
-	Address     string
-	Apt         string
-	DOB         string
-	Phonenum    string
-	Addlmales   string
-	Addlfemales string
-	Fammbrs     []fammbr
-	Financials  financials
+	Firstname    string
+	Lastname     string
+	Address      string
+	Apt          string
+	CrossStreet  string
+	DOB          string
+	Phonenum     string
+	Altphonenum  string
+	Altphonedesc string
+	Ethnicity    string
+	ReferredBy   string
+	Notes        string
+	Adultmales   string
+	Adultfemales string
+	Fammbrs      []fammbr
+	Financials   financials
 }
 
 type fammbr struct {
@@ -122,7 +130,11 @@ func init() {
 	http.Handle("/api/users/edit", ContextHandler{editusers})
 }
 
-var funcMap = template.FuncMap{"age": age}
+var funcMap = template.FuncMap{"age": age,
+	"girls":   numGirls,
+	"boys":    numBoys,
+	"famSize": famSize,
+}
 var templates = template.Must(template.New("client").Funcs(funcMap).ParseGlob("*.html"))
 
 func age(dobs string) string {
@@ -135,6 +147,45 @@ func age(dobs string) string {
 	}
 	agens := time.Since(dob)
 	return strconv.FormatFloat(agens.Hours()/float64(24*365), 'f', 0, 64)
+}
+
+func numBoys(children []fammbr) int {
+	n := 0
+	for _, child := range children {
+		if !child.Female {
+			n++
+		}
+	}
+	return n
+}
+
+func numGirls(children []fammbr) int {
+	n := 0
+	for _, child := range children {
+		if child.Female {
+			n++
+		}
+	}
+	return n
+}
+
+func famSize(clt client) (num int, err error) {
+	var men, women int = 0, 0
+	if clt.Adultmales != "" {
+		men, err = strconv.Atoi(clt.Adultmales)
+		if err != nil {
+			return 0, errors.New(fmt.Sprintf("unable to parse %v",
+				clt.Adultmales))
+		}
+	}
+	if clt.Adultfemales != "" {
+		women, err = strconv.Atoi(clt.Adultfemales)
+		if err != nil {
+			return 0, errors.New(fmt.Sprintf("unable to parse %v",
+				clt.Adultfemales))
+		}
+	}
+	return men + women + len(clt.Fammbrs), nil
 }
 
 func webuserOK(c appengine.Context, w http.ResponseWriter, r *http.Request) bool {

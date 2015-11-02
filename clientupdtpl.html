@@ -7,14 +7,29 @@
         <label>DOB:<input type="date" id="dob" value="{{ .Clientrec.Clt.DOB }}" name="dob"></label>
 	<br>
         <label class="contained">Address:<input type="text" size="40" id="address" value="{{ .Clientrec.Clt.Address }}" name="Address"></label>
+        <label class="contained">Cross-street:<input type="text" size="40" id="crossstreet" value="{{ .Clientrec.Clt.CrossStreet }}" name="CrossStreet"></label>
         <label>Apt:<input type="text" size="10" id="apt" value="{{ .Clientrec.Clt.Apt }}" name="apt"></label>
-        <label>Phone:<input type="text" size="15" id="phonenum" value="{{ .Clientrec.Clt.Phonenum }}" name="phonenum"></label>
+        <br>
+        <label class="contained">Phone:<input type="text" size="15" id="phonenum" value="{{ .Clientrec.Clt.Phonenum }}" name="phonenum"></label>
+        <label>Alt Phone:<input type="text" size="15" id="altphonenum" value="{{ .Clientrec.Clt.Altphonenum }}" name="altphonenum"></label>
+        <label>Alt Phone Description:<input type="text" size="15" id="altphonedesc" value="{{ .Clientrec.Clt.Altphonedesc }}" name="altphonedesc"></label>
+        <br>
+        <label class="contained">Referred By:<select id="referred" name="referred">
+            <option value="districtofc" {{ if eq "districtofc" .Clientrec.Clt.ReferredBy }} selected{{end}}>District Office</option>
+            <option value="parish" {{ if eq "parish" .Clientrec.Clt.ReferredBy }} selected{{end}}>Parish</option>
+            <option value="other" {{ if eq "other" .Clientrec.Clt.ReferredBy }} selected{{end}}>Other</option>
+          </select>
+        </label>
+        <br>
+        <label class="contained">Notes:<textarea rows="4" cols="40" id="notes">{{ .Clientrec.Clt.Notes }}</textarea></label>
         </div>
         <br>
 	<div class="box">
         <h4>Household</h4>
-        <label class="contained">Other Adults - Males:<input type="text" size="5" id="addlmales" value="{{ .Clientrec.Clt.Addlmales }}" name="addlmales"></label>
-        <label>Other Adults - Females:<input type="text" size="5" id="addlfemales" value="{{ .Clientrec.Clt.Addlfemales }}" name="addlfemales"></label>
+        <label class="contained">Ethnicity:<input type="text" id="ethnicity" value="{{ .Clientrec.Clt.Ethnicity }}" name="ethnicity"></label>
+        <br>
+        <label class="contained">Adults - Males:<input type="text" size="5" id="adultmales" value="{{ .Clientrec.Clt.Adultmales }}" name="adultmales"></label>
+        <label>Adults - Females:<input type="text" size="5" id="adultfemales" value="{{ .Clientrec.Clt.Adultfemales }}" name="adultfemales"></label>
 	<table class="contained">
 	  <thead>
             <tr><th colspan="4">Children</th></tr>
@@ -162,35 +177,47 @@
       var lname = $( 'input#lname' );
       var address = $( 'input#address' );
       var apt = $( 'input#apt' );
+      var xstreet = $( 'input#crossstreet' );
       var dob = $( 'input#dob' );
       var phnum = $( 'input#phonenum' );
-      var addlmales = $( 'input#addlmales' );
-      var addlfemales = $( 'input#addlfemales' );
+      var aphnum = $( 'input#altphonenum' );
+      var aphdesc = $( 'input#altphonedesc' );
+      var ethnicity = $( 'input#ethnicity' );
+      var referred = $( 'select#referred' );
+      var notes = $( 'textarea#notes' );
+      var adultmales = $( 'input#adultmales' );
+      var adultfemales = $( 'input#adultfemales' );
 
-      var client = {Firstname: fname.val(), Lastname: lname.val(), Address: address.val(), Apt: apt.val(), DOB: dob.val(),
-        PhoneNum: phnum.val(), Addlmales: addlmales.val(), 
-	Addlfemales: addlfemales.val(), Fammbrs: []}
+      var client = {Firstname: fname.val(), Lastname: lname.val(), 
+        Address: address.val(), CrossStreet: xstreet.val(), Apt: apt.val(),
+        DOB: dob.val(), PhoneNum: phnum.val(), Altphonenum: aphnum.val(),
+        Altphonedesc: aphdesc.val(), Ethnicity: ethnicity.val(),
+        ReferredBy: referred.val(), Notes: notes.val(), 
+        Adultmales: adultmales.val(), Adultfemales: adultfemales.val(),
+        Fammbrs: []}
       var morembrs = true;
       var i = 0;
       while (morembrs) {
         var nm = $( 'input#fammbrnm' + i );
         if (nm.length) {
-          client.Fammbrs[i] = new Object();   
-          client.Fammbrs[i].Name = nm.val();   
+          if (nm.val() != "") {
+	    var child = new Object();   
+            child.Name = nm.val();   
+	    var fdob = $( 'input#fammbrdob' + i );
+	    if (nm.val() == 0) {i++;continue};
+	    var ffml = $( 'input#fammbrfemale' + i );
+	    if (fdob.length) {
+	      child.DOB = fdob.val();   
+	    }
+	    if (ffml.length) {
+	      child.Female = ffml[0].checked;
+	    }
+	    client.Fammbrs.push(child);
+	  }
+          i++;
 	} else {
           morembrs = false;
-          continue;
         }
-        var fdob = $( 'input#fammbrdob' + i );
-        if (nm.val() == 0) {i++;continue};
-        var ffml = $( 'input#fammbrfemale' + i );
-        if (fdob.length) {
-          client.Fammbrs[i].DOB = fdob.val();   
-	}
-        if (ffml.length) {
-          client.Fammbrs[i].Female = ffml[0].checked;
-        }
-        i++;
       }
       var fin = {
         FatherIncome: $( 'input#incfather' ).val(), 

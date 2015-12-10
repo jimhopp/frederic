@@ -4,7 +4,7 @@ env:
 before_install:
 - wget https://storage.googleapis.com/appengine-sdks/featured/go_appengine_sdk_linux_amd64-1.9.30.zip --directory-prefix=$HOME/
 - pwd 
-- unzip go_appengine_sdk_linux_amd64-1.9.30.zip -d $HOME
+- unzip $HOME/go_appengine_sdk_linux_amd64-1.9.30.zip -d $HOME
 script:
 - echo $PATH
 - ls $HOME

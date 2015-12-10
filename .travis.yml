@@ -6,9 +6,4 @@ before_install:
 - pwd 
 - unzip $HOME/go_appengine_sdk_linux_amd64-1.9.30.zip -d $HOME
 script:
-- echo $PATH
-- ls $HOME
-- ls $HOME/go_appengine/
-- find builds
-- find build
 - goapp test

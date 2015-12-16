@@ -62,6 +62,7 @@ type financials struct {
 	Other3Income          string
 	Other3IncomeType      string
 	RentExpense           string
+	Section8Voucher       bool
 	UtilitiesExpense      string
 	WaterExpense          string
 	PhoneExpense          string

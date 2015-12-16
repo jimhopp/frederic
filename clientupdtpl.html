@@ -75,7 +75,7 @@
             <td><input type="number" class="number" id="incfather" name="incfather" value="{{ .Clientrec.Clt.Financials.FatherIncome }}"></td>
             <td class="contained">Father's Income</td>
             <td><input  type="number" class="number" id="exprent" name="exprent" value="{{ .Clientrec.Clt.Financials.RentExpense }}"></td>
-            <td>Rent</td>
+            <td>Rent (Section 8? <input type="checkbox" id="section8" name="section8"{{ if .Clientrec.Clt.Financials.Section8Voucher }} checked="checked"{{ end }}>)</td>
           </tr>
           <tr>
             <td><input  type="number" class="number" id="incmother" name="incmother" value="{{ .Clientrec.Clt.Financials.MotherIncome }}"></td>
@@ -236,6 +236,7 @@
         Other3Income: $( 'input#incother3' ).val(), 
         Other3IncomeType: $( 'input#otherinctype3' ).val(), 
         RentExpense: $( 'input#exprent' ).val(), 
+        Section8Voucher: $( 'input#section8' ).is(":checked"), 
         UtilitiesExpense: $( 'input#exputilities' ).val(), 
         WaterExpense: $( 'input#expwater' ).val(), 
         PhoneExpense: $( 'input#expphone' ).val(), 

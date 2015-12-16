@@ -108,7 +108,7 @@
             <td><input disabled="true" type="number" class="number" id="incfather" name="incfather" value="{{ .Clientrec.Clt.Financials.FatherIncome }}"></td>
             <td>Father's Income</td>
             <td><input disabled="true" type="number" class="number" id="exprent" name="exprent" value="{{ .Clientrec.Clt.Financials.RentExpense }}"></td>
-            <td>Rent</td>
+            <td>Rent (Section 8? <input disabled="true" type="checkbox" id="section8" name="section8"{{ if .Clientrec.Clt.Financials.Section8Voucher }} checked="checked"{{ end }}>)</td>
           </tr>
           <tr>
             <td><input disabled="true" type="number" class="number" id="incmother" name="incmother" value="{{ .Clientrec.Clt.Financials.MotherIncome }}"></td>

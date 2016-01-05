@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strconv"
 	"testing"
 
@@ -121,6 +122,55 @@ func TestListClientsPage(t *testing.T) {
 		if !bytes.Contains(body, []byte(rows[i])) {
 			t.Errorf("got body %v, did not contain %v", string(body), rows[i])
 		}
+	}
+}
+
+func TestListClientsPageIsSorted(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclients := []client{
+		{Firstname: "frederic", Lastname: "ozanam"},
+		{Firstname: "John", Lastname: "Doe"},
+		{Firstname: "Jane", Lastname: "Doe"},
+	}
+	ids := make([]int64, 3)
+	for i := 0; i < len(newclients); i++ {
+		id, err := addclienttodb(newclients[i], inst)
+		if err != nil {
+			t.Fatalf("unable to add client: %v", err)
+		}
+		ids[i] = id
+	}
+	req, err := inst.NewRequest("GET", "/listclients", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org", true)
+
+	listclientspage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	body := w.Body.Bytes()
+	m, err := regexp.Match(`(?s).*Doe.*Doe.*ozanam.*`, body)
+
+	if err != nil {
+		t.Errorf("got error on regexp match: %v", err)
+	}
+	if !m {
+		t.Errorf("names not sorted: %v", string(body))
 	}
 }
 

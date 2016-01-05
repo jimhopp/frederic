@@ -241,7 +241,7 @@ func listclientspage(c appengine.Context, w http.ResponseWriter, r *http.Request
 
 	u := user.Current(c)
 
-	q := datastore.NewQuery("SVDPClient")
+	q := datastore.NewQuery("SVDPClient").Order("Lastname").Order("Firstname")
 	var clients []client
 	keys, err := q.GetAll(c, &clients)
 	if err != nil {

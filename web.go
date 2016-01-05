@@ -242,7 +242,7 @@ func listclientspage(c appengine.Context, w http.ResponseWriter, r *http.Request
 	u := user.Current(c)
 
 	q := datastore.NewQuery("SVDPClient")
-	clients := make([]client, 0, 10)
+	var clients []client
 	keys, err := q.GetAll(c, &clients)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -308,7 +308,7 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	}
 
 	q := datastore.NewQuery("SVDPClientVisit").Ancestor(key).Order("-Visitdate")
-	visits := make([]visit, 0, 10)
+	var visits []visit
 	_, err = q.GetAll(c, &visits)
 
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
@@ -468,7 +468,7 @@ func edituserspage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	}
 
 	q := datastore.NewQuery("SVDPUser").Order("Email")
-	users := make([]appuser, 0, 10)
+	var users []appuser
 	keys, err := q.GetAll(c, &users)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

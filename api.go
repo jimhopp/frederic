@@ -211,7 +211,7 @@ func getallclients(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	}
 
 	q := datastore.NewQuery("SVDPClient")
-	clients := make([]client, 0, 10)
+	var clients []client
 	ids, err := q.GetAll(c, &clients)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -269,7 +269,7 @@ func getallvisits(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	}
 	q := datastore.NewQuery("SVDPClientVisit").Ancestor(datastore.NewKey(
 		c, "SVDPClient", "", id, nil))
-	visits := make([]visit, 0, 10)
+	var visits []visit
 	ids, err := q.GetAll(c, &visits)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -380,8 +380,7 @@ func getallusers(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := datastore.NewQuery("SVDPUser").Order("Email")
-	//TODO size more appropriately - use Count() query?
-	aus := make([]appuser, 0, 10)
+	var aus []appuser
 
 	keys, err := q.GetAll(c, &aus)
 	if err != nil {

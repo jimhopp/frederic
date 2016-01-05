@@ -112,11 +112,11 @@ func TestListClientsPage(t *testing.T) {
 	body := w.Body.Bytes()
 	rows := []string{"<td>Clients</td>",
 		"<a href=\"/client/" + strconv.FormatInt(ids[0], 10) +
-			"\">frederic ozanam</a>",
+			"\">ozanam, frederic</a>",
 		"<a href=\"/client/" + strconv.FormatInt(ids[1], 10) +
-			"\">John Doe</a>",
+			"\">Doe, John</a>",
 		"<a href=\"/client/" + strconv.FormatInt(ids[2], 10) +
-			"\">Jane Doe</a>",
+			"\">Doe, Jane</a>",
 	}
 	for i := 0; i < len(rows); i++ {
 		if !bytes.Contains(body, []byte(rows[i])) {

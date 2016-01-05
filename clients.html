@@ -7,7 +7,7 @@
       <tr><td>Clients</td></tr>
       {{ range $i, $clt := .Clients }}
         <tr>
-          <td>{{ $i }}.<a href="/client/{{ .Id }}">{{ .Clt.Firstname }} {{ .Clt.Lastname }}</a></td>
+          <td>{{ $i }}.<a href="/client/{{ .Id }}">{{ .Clt.Lastname }}, {{ .Clt.Firstname }}</a></td>
           <td><a href="/recordvisit/{{ .Id }}">(record visit)</a></td>
         </tr>
       {{ end }}

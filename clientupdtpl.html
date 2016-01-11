@@ -272,8 +272,13 @@
 })
   .done(function(  data, textStatus, jqXHR ) {
     var actiontext = isAdd() ? "added" : "updated";
-    $( '#status' ).text('Successfully ' + actiontext + ' client ' + data.Clt.Firstname + ' ' 
-      + data.Clt.Lastname + '!').removeClass('hidden');
+    var status = $( '#status' );
+    status.text('Successfully ' + actiontext + ' client ' + data.Clt.Firstname + ' ' 
+      + data.Clt.Lastname + '!');
+    status.append('<a href="/editclient/' + data.Id + '">(edit)</a>');
+    status.append('<a href="/recordvisit/' + data.Id + '">(record visit)</a>');
+    status.removeClass('hidden');
+    $( 'input#submit' ).addClass('hidden');
   })
   .fail(function( jqXHR, textStatus, errorThrown ) {
     alert( "failure: " + textStatus + ',' + errorThrown + JSON.stringify(jqXHR));

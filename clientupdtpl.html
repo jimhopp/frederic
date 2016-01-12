@@ -278,7 +278,7 @@
     status.append('<a href="/editclient/' + data.Id + '">(edit)</a>');
     status.append('<a href="/recordvisit/' + data.Id + '">(record visit)</a>');
     status.removeClass('hidden');
-    $( 'input#submit' ).addClass('hidden');
+    if (isAdd()) {$( 'input#submit' ).addClass('hidden');}
   })
   .fail(function( jqXHR, textStatus, errorThrown ) {
     alert( "failure: " + textStatus + ',' + errorThrown + JSON.stringify(jqXHR));

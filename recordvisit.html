@@ -102,6 +102,7 @@
 })
   .done(function(  data, textStatus, jqXHR ) {
     $( '#status' ).text('Successfully recorded visit for client!').removeClass('hidden');
+    $( 'input#submit' ).addClass('hidden');
   })
   .fail(function( jqXHR, textStatus, errorThrown ) {
     alert( "failure: " + textStatus + ',' + errorThrown + JSON.stringify(jqXHR));

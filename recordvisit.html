@@ -113,6 +113,30 @@
     $( 'input#submit' ).on('click', clickedsubmit);
     $( 'a#viewclient' ).attr('href', '/client/' + clientId);
 
+    var lostfocus = function(evt) {
+      evt.preventDefault();
+      var tgtj = $( 'input#' + evt.target.id );
+      var val = evt.target.value;
+      console.log('lostfocus: value is ' + val);
+      var num = parseFloat(val);
+      if (val != "" && Number.isNaN(num)) { 
+        tgtj.addClass('error');
+        console.log('lostfocus: NaN'); 
+      } 
+      else {
+        tgtj.removeClass('error');
+        tgtj.val(num.toFixed(2));
+      }
+    }
+
+    $( 'input#giftcardamt' ).on('focusout', lostfocus);
+    $( 'input#rentassistance' ).on('focusout', lostfocus);
+    $( 'input#utilitiesassistance' ).on('focusout', lostfocus);
+    $( 'input#waterbillassistance' ).on('focusout', lostfocus);
+    $( 'input#otherassistanceamt' ).on('focusout', lostfocus);
+    $( 'input#vouchersclothing' ).on('focusout', lostfocus);
+    $( 'input#vouchersfurniture' ).on('focusout', lostfocus);
+    $( 'input#vouchersother' ).on('focusout', lostfocus);
     });
   </script>
   </body>

@@ -210,6 +210,10 @@ func webuserOK(c appengine.Context, w http.ResponseWriter, r *http.Request) bool
 	if !authzed {
 		c.Warningf("authorization failure: %v", u.Email)
 		w.WriteHeader(http.StatusForbidden)
+		err = templates.ExecuteTemplate(w, "unauthorized.html", nil)
+		if err != nil {
+			c.Errorf("unauthorized user and got err on template: %v", err)
+		}
 		return false
 	}
 	return true

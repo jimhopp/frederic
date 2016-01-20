@@ -14,25 +14,26 @@ import (
 )
 
 type EndpointTest struct {
-	url      string
-	handler  func(appengine.Context, http.ResponseWriter, *http.Request)
-	expected int
+	url           string
+	humanReadable bool
+	handler       func(appengine.Context, http.ResponseWriter, *http.Request)
+	expected      int
 }
 
 var endpoints = []EndpointTest{
-	{"/api/client", addclient, http.StatusUnauthorized},
-	{"/api/client/", editclient, http.StatusUnauthorized},
-	{"/api/visit/", addvisit, http.StatusUnauthorized},
-	{"/api/getallclients", getallclients, http.StatusUnauthorized},
-	{"/api/getallvisits/", getallvisits, http.StatusUnauthorized},
-	{"/api/users/", getallusers, http.StatusUnauthorized},
-	{"/api/users/edit", editusers, http.StatusUnauthorized},
-	{"/", homepage, http.StatusFound},
-	{"/listclients", listclientspage, http.StatusFound},
-	{"/client", getclientpage, http.StatusFound},
-	{"/newclient", newclientpage, http.StatusFound},
-	{"/editclient", editclientpage, http.StatusFound},
-	{"/recordvisit/", recordvisitpage, http.StatusFound},
+	{"/api/client", false, addclient, http.StatusUnauthorized},
+	{"/api/client/", false, editclient, http.StatusUnauthorized},
+	{"/api/visit/", false, addvisit, http.StatusUnauthorized},
+	{"/api/getallclients", false, getallclients, http.StatusUnauthorized},
+	{"/api/getallvisits/", false, getallvisits, http.StatusUnauthorized},
+	{"/api/users/", false, getallusers, http.StatusUnauthorized},
+	{"/api/users/edit", false, editusers, http.StatusUnauthorized},
+	{"/", true, homepage, http.StatusFound},
+	{"/listclients", true, listclientspage, http.StatusFound},
+	{"/client", true, getclientpage, http.StatusFound},
+	{"/newclient", true, newclientpage, http.StatusFound},
+	{"/editclient", true, editclientpage, http.StatusFound},
+	{"/recordvisit/", true, recordvisitpage, http.StatusFound},
 }
 
 func TestHomePage(t *testing.T) {
@@ -422,6 +423,13 @@ func TestEndpointsNotAuthorized(t *testing.T) {
 		if code != http.StatusForbidden {
 			t.Errorf("got code %v for endpoint %v, want %v", code,
 				endpoints[i].url, http.StatusForbidden)
+		}
+		if endpoints[i].humanReadable {
+			body := w.Body.Bytes()
+			notauth := `Sorry`
+			if !bytes.Contains(body, []byte(notauth)) {
+				t.Errorf("endpoint %v: got body %v, did not contain %v", endpoints[i].url, string(body), notauth)
+			}
 		}
 	}
 }

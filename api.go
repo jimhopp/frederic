@@ -301,6 +301,30 @@ func getallvisits(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(b))
 }
 
+func getvisitsinrange(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	if !apiuserOK(c, w) {
+		return
+	}
+
+	q := datastore.NewQuery("SVDPClientVisit")
+	var visits []visit
+	ids, err := q.GetAll(c, &visits)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	c.Debugf("getallvisits: got keys %v\n", ids)
+	w.WriteHeader(http.StatusOK)
+
+	b, err := json.Marshal(visits)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(w, string(b))
+}
+
 func editusers(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !apiuserOK(c, w) {
 		return

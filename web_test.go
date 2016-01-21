@@ -2,6 +2,8 @@ package frederic
 
 import (
 	"bytes"
+	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -26,10 +28,12 @@ var endpoints = []EndpointTest{
 	{"/api/visit/", false, addvisit, http.StatusUnauthorized},
 	{"/api/getallclients", false, getallclients, http.StatusUnauthorized},
 	{"/api/getallvisits/", false, getallvisits, http.StatusUnauthorized},
+	{"/api/getvisitsinrange/", false, getvisitsinrange, http.StatusUnauthorized},
 	{"/api/users/", false, getallusers, http.StatusUnauthorized},
 	{"/api/users/edit", false, editusers, http.StatusUnauthorized},
 	{"/", true, homepage, http.StatusFound},
-	{"/listclients", true, listclientspage, http.StatusFound},
+	{"/visits", true, listvisitsinrangepage, http.StatusFound},
+	{"/clients", true, listclientspage, http.StatusFound},
 	{"/client", true, getclientpage, http.StatusFound},
 	{"/newclient", true, newclientpage, http.StatusFound},
 	{"/editclient", true, editclientpage, http.StatusFound},
@@ -84,7 +88,7 @@ func TestListClientsPage(t *testing.T) {
 		{Firstname: "John", Lastname: "Doe"},
 		{Firstname: "Jane", Lastname: "Doe"},
 	}
-	ids := make([]int64, 3)
+	ids := make([]int64, len(newclients))
 	for i := 0; i < len(newclients); i++ {
 		id, err := addclienttodb(newclients[i], inst)
 		if err != nil {
@@ -642,4 +646,106 @@ func TestListUsersPageNotAdmin(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusForbidden)
 	}
 
+}
+
+func TestListVisitsInRange(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclients := []client{{Firstname: "frederic", Lastname: "ozanam"},
+		{Firstname: "Elizabeth", Lastname: "Seton"},
+	}
+	cltids := make([]int64, len(newclients))
+	for i, newclient := range newclients {
+		cltids[i], err = addclienttodb(newclient, inst)
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		if err != nil {
+			t.Fatalf("unable to add client: %v", err)
+		}
+	}
+
+	visits := [][]visit{
+		{
+			{Vincentians: "Michael, Mary Margaret",
+				Visitdate:           "2013-04-03",
+				Assistancerequested: "test1"},
+			{Vincentians: "Irene, Jim",
+				Visitdate:           "2013-05-03",
+				Assistancerequested: "test2"},
+		},
+		{
+			{Vincentians: "Eileen, Lynn",
+				Visitdate:           "2013-06-03",
+				Assistancerequested: "test3"},
+			{Vincentians: "Stu & Anne",
+				Visitdate:           "2013-07-03",
+				Assistancerequested: "test4"},
+		},
+	}
+
+	numvisits := 0
+	for i, viz := range visits {
+		for _, vst := range viz {
+			data, err := json.Marshal(vst)
+			if err != nil {
+				t.Fatalf("Failed to marshal %v", visits[i])
+			}
+			req, err := inst.NewRequest("PUT", "/visit/"+
+				strconv.FormatInt(cltids[i], 10), bytes.NewReader(data))
+			if err != nil {
+				t.Fatalf("Failed to create req: %v", err)
+			}
+			req.Header = map[string][]string{
+				"Content-Type": {"application/json"},
+			}
+			aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+			w := httptest.NewRecorder()
+			c := appengine.NewContext(req)
+			addTestUser(c, "test@example.org", true)
+
+			addvisit(c, w, req)
+
+			code := w.Code
+			if code != http.StatusOK {
+				t.Errorf("got code %v, want %v", code, http.StatusCreated)
+			}
+
+			body := w.Body.Bytes()
+			newrec := &visitrec{}
+			err = json.Unmarshal(body, newrec)
+			if err != nil {
+				t.Errorf("unable to parse %v: %v", string(body), err)
+			}
+			numvisits++
+		}
+	}
+
+	req, err := inst.NewRequest("GET", "/listvisitsinrange/", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w := httptest.NewRecorder()
+
+	c := appengine.NewContext(req)
+	listvisitsinrangepage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	body := w.Body.Bytes()
+	for _, viz := range visits {
+		for _, vst := range viz {
+			if !bytes.Contains(body, []byte(vst.Assistancerequested)) {
+				t.Errorf("unable to find %v in %v",
+					vst, string(body))
+			}
+		}
+	}
 }

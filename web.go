@@ -121,12 +121,14 @@ func init() {
 	http.Handle("/editclient/", ContextHandler{editclientpage})
 	http.Handle("/addclient", ContextHandler{newclientpage})
 	http.Handle("/recordvisit/", ContextHandler{recordvisitpage})
+	http.Handle("/visits/", ContextHandler{listvisitsinrangepage})
 	http.Handle("/users", ContextHandler{edituserspage})
 	http.Handle("/api/client", ContextHandler{addclient})
 	http.Handle("/api/client/", ContextHandler{editclient})
 	http.Handle("/api/visit/", ContextHandler{addvisit})
 	http.Handle("/api/getallclients", ContextHandler{getallclients})
 	http.Handle("/api/getallvisits/", ContextHandler{getallvisits})
+	http.Handle("/api/getvisitsinrange/", ContextHandler{getvisitsinrange})
 	http.Handle("/api/users", ContextHandler{getallusers})
 	http.Handle("/api/users/edit", ContextHandler{editusers})
 }
@@ -498,6 +500,57 @@ func edituserspage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 		resp,
 	}
 	err = templates.ExecuteTemplate(w, "users.html", data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	if !webuserOK(c, w, r) {
+		return
+	}
+
+	u := user.Current(c)
+
+	q := datastore.NewQuery("SVDPClientVisit")
+	var visits []visit
+	keys, err := q.GetAll(c, &visits)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	cltmap := map[int64]string{}
+
+	c.Infof("got ids %v", keys)
+	visitrecs := make([]visitrec, len(keys))
+	for i, vst := range visits {
+		visitrecs[i].Visit = vst
+		visitrecs[i].Id = keys[i].IntID()
+		cltkey := keys[i].Parent()
+		visitrecs[i].ClientId = cltkey.IntID()
+		var clt client
+		err = datastore.Get(c, cltkey, &clt)
+		if err != nil {
+			c.Warningf("unable to retrieve client with key %v for visit with key %v",
+				cltkey.String(), keys[i].String())
+		} else {
+			cltmap[visitrecs[i].ClientId] = clt.Lastname + ", " + clt.Firstname
+		}
+	}
+	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
+
+	data := struct {
+		U, LogoutUrl string
+		Visits       []visitrec
+		Cltmap       map[int64]string
+	}{
+		u.Email,
+		l,
+		visitrecs,
+		cltmap,
+	}
+	err = templates.ExecuteTemplate(w, "visits.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

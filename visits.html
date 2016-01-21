@@ -1,0 +1,45 @@
+<html>
+  <title>St. Vincent de Paul (St. Charles Borromeo Conference) Visits</title>
+  {{ template "scripts" }}
+  <body class="main">
+   {{ template "header" . }}
+    <table class="contained">
+      <thead>
+	<th>Client</th>
+	<th>Visit Date</th>
+	<th>Vincentians</th>
+	<th>Assistance Requested</th>
+	<th>Gift Card</th>
+	<th>Num. Food Boxes</th>
+	<th>Rent</th>
+	<th>Utilities</th>
+	<th>Water Bill</th>
+	<th>Other assistance Type</th>
+	<th>Other assistance Amt</th>
+	<th>Clothing Vouchers</th>
+	<th>Furniture Vouchers</th>
+	<th>Other Vouchers</th>
+	<th>Comment</th>
+      </thead></tr>
+      {{ range $i, $vst := .Visits }}
+        <tr>
+          <td class="bordered"><a href="/client/{{ .ClientId }}">{{ index $.Cltmap .ClientId }}</a></td>
+          <td class="bordered">{{ .Visit.Visitdate }}</td>
+          <td class="bordered">{{ .Visit.Vincentians }}</td>
+          <td class="bordered">{{ .Visit.Assistancerequested }}</td>
+          <td class="bordered number">{{ .Visit.Giftcardamt }}</td>
+          <td class="bordered number">{{ .Visit.Numfoodboxes }}</td>
+          <td class="bordered number">{{ .Visit.Rentassistance }}</td>
+          <td class="bordered number">{{ .Visit.Utilitiesassistance }}</td>
+          <td class="bordered number">{{ .Visit.Waterbillassistance }}</td>
+          <td class="bordered">{{ .Visit.Otherassistancetype }}</td>
+          <td class="bordered number">{{ .Visit.Otherassistanceamt }}</td>
+          <td class="bordered number">{{ .Visit.Vouchersclothing }}</td>
+          <td class="bordered number">{{ .Visit.Vouchersfurniture }}</td>
+          <td class="bordered number">{{ .Visit.Vouchersother }}</td>
+          <td class="bordered">{{ .Visit.Comment }}</td>
+        </tr>
+      {{ end }}
+    </table>
+  </body>
+</html>

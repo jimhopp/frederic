@@ -130,6 +130,120 @@ func TestGetAllClients(t *testing.T) {
 	}
 }
 
+func TestGetAllVisitsInRange(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclients := []client{{Firstname: "frederic", Lastname: "ozanam"},
+		{Firstname: "Elizabeth", Lastname: "Seton"},
+	}
+	cltids := make([]int64, len(newclients))
+	for i, newclient := range newclients {
+		cltids[i], err = addclienttodb(newclient, inst)
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		if err != nil {
+			t.Fatalf("unable to add client: %v", err)
+		}
+	}
+
+	visits := [][]visit{
+		{
+			{Vincentians: "Michael, Mary Margaret",
+				Visitdate: "2013-04-03"},
+			{Vincentians: "Irene, Jim",
+				Visitdate: "2013-05-03"},
+		},
+		{
+			{Vincentians: "Eileen, Lynn",
+				Visitdate: "2013-06-03"},
+			{Vincentians: "Stu & Anne",
+				Visitdate: "2013-07-03"},
+		},
+	}
+
+	numvisits := 0
+	for i, viz := range visits {
+		for _, vst := range viz {
+			data, err := json.Marshal(vst)
+			if err != nil {
+				t.Fatalf("Failed to marshal %v", visits[i])
+			}
+			req, err := inst.NewRequest("PUT", "/visit/"+
+				strconv.FormatInt(cltids[i], 10), bytes.NewReader(data))
+			if err != nil {
+				t.Fatalf("Failed to create req: %v", err)
+			}
+			req.Header = map[string][]string{
+				"Content-Type": {"application/json"},
+			}
+			aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+			w := httptest.NewRecorder()
+			c := appengine.NewContext(req)
+			addTestUser(c, "test@example.org", true)
+
+			addvisit(c, w, req)
+
+			code := w.Code
+			if code != http.StatusOK {
+				t.Errorf("got code %v, want %v", code, http.StatusCreated)
+			}
+
+			body := w.Body.Bytes()
+			newrec := &visitrec{}
+			err = json.Unmarshal(body, newrec)
+			if err != nil {
+				t.Errorf("unable to parse %v: %v", string(body), err)
+			}
+			numvisits++
+		}
+	}
+
+	req, err := inst.NewRequest("GET", "/api/getvisitsinrange/", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w := httptest.NewRecorder()
+
+	c := appengine.NewContext(req)
+	getvisitsinrange(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	body := w.Body.Bytes()
+	createdvisits := []visit{}
+	err = json.Unmarshal(body, &createdvisits)
+	if err != nil {
+		t.Errorf("error unmarshaling response to getvisitsinrange %v\n", err)
+	}
+	if len(createdvisits) != numvisits {
+		t.Errorf("got %v visits, want %v\n", len(createdvisits),
+			numvisits)
+	}
+	for _, viz := range visits {
+		for _, vst := range viz {
+			found := false
+			for _, createdvisit := range createdvisits {
+				if reflect.DeepEqual(createdvisit, vst) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("unable to find %v in %v",
+					vst, &createdvisits)
+			}
+		}
+	}
+}
+
 func TestGetAllVisits(t *testing.T) {
 	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {

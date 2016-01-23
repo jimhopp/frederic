@@ -670,18 +670,18 @@ func TestListVisitsInRange(t *testing.T) {
 	visits := [][]visit{
 		{
 			{Vincentians: "Michael, Mary Margaret",
-				Visitdate:           "2013-04-03",
+				Visitdate:           "2013-02-03",
 				Assistancerequested: "test1"},
 			{Vincentians: "Irene, Jim",
-				Visitdate:           "2013-05-03",
+				Visitdate:           "2013-01-03",
 				Assistancerequested: "test2"},
 		},
 		{
 			{Vincentians: "Eileen, Lynn",
-				Visitdate:           "2013-06-03",
+				Visitdate:           "2013-04-03",
 				Assistancerequested: "test3"},
 			{Vincentians: "Stu & Anne",
-				Visitdate:           "2013-07-03",
+				Visitdate:           "2013-03-03",
 				Assistancerequested: "test4"},
 		},
 	}
@@ -747,5 +747,12 @@ func TestListVisitsInRange(t *testing.T) {
 					vst, string(body))
 			}
 		}
+	}
+	m, err := regexp.Match(`(?s).*2013-04-03.*2013-03-03.*2013-02-03.*2013-01-03.*`, body)
+	if err != nil {
+		t.Errorf("got error on regexp match: %v", err)
+	}
+	if !m {
+		t.Errorf("visit dates not sorted: %v", string(body))
 	}
 }

@@ -152,15 +152,15 @@ func TestGetAllVisitsInRange(t *testing.T) {
 	visits := [][]visit{
 		{
 			{Vincentians: "Michael, Mary Margaret",
-				Visitdate: "2013-04-03"},
-			{Vincentians: "Irene, Jim",
 				Visitdate: "2013-05-03"},
+			{Vincentians: "Irene, Jim",
+				Visitdate: "2013-04-03"},
 		},
 		{
 			{Vincentians: "Eileen, Lynn",
-				Visitdate: "2013-06-03"},
-			{Vincentians: "Stu & Anne",
 				Visitdate: "2013-07-03"},
+			{Vincentians: "Stu & Anne",
+				Visitdate: "2013-06-03"},
 		},
 	}
 
@@ -240,6 +240,14 @@ func TestGetAllVisitsInRange(t *testing.T) {
 				t.Errorf("unable to find %v in %v",
 					vst, &createdvisits)
 			}
+		}
+	}
+	for i, createdvisit := range createdvisits {
+		var expecteddate string
+		expecteddate = "2013-0" + strconv.Itoa(7-i) + "-03"
+		if createdvisit.Visitdate != expecteddate {
+			t.Errorf("dates not sorted? expected date %v, found %v for i %v",
+				expecteddate, createdvisit.Visitdate, i)
 		}
 	}
 }

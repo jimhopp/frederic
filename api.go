@@ -306,7 +306,7 @@ func getvisitsinrange(c appengine.Context, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	q := datastore.NewQuery("SVDPClientVisit")
+	q := datastore.NewQuery("SVDPClientVisit").Order("-Visitdate")
 	var visits []visit
 	ids, err := q.GetAll(c, &visits)
 	if err != nil {

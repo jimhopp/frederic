@@ -512,7 +512,7 @@ func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.R
 
 	u := user.Current(c)
 
-	q := datastore.NewQuery("SVDPClientVisit")
+	q := datastore.NewQuery("SVDPClientVisit").Order("-Visitdate")
 	var visits []visit
 	keys, err := q.GetAll(c, &visits)
 	if err != nil {

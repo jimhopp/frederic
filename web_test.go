@@ -724,7 +724,7 @@ func TestListVisitsInRange(t *testing.T) {
 		}
 	}
 
-	req, err := inst.NewRequest("GET", "/listvisitsinrange/", nil)
+	req, err := inst.NewRequest("GET", "/visits?startdate=2013-01-03&enddate=2013-04-03", nil)
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}

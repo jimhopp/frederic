@@ -121,7 +121,7 @@ func init() {
 	http.Handle("/editclient/", ContextHandler{editclientpage})
 	http.Handle("/addclient", ContextHandler{newclientpage})
 	http.Handle("/recordvisit/", ContextHandler{recordvisitpage})
-	http.Handle("/visits/", ContextHandler{listvisitsinrangepage})
+	http.Handle("/visits", ContextHandler{listvisitsinrangepage})
 	http.Handle("/users", ContextHandler{edituserspage})
 	http.Handle("/api/client", ContextHandler{addclient})
 	http.Handle("/api/client/", ContextHandler{editclient})
@@ -510,9 +510,16 @@ func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
+	start := r.FormValue("startdate")
+	end := r.FormValue("enddate")
+	c.Infof("looking for visits between %v and %v", start, end)
+
 	u := user.Current(c)
 
-	q := datastore.NewQuery("SVDPClientVisit").Order("-Visitdate")
+	q := datastore.NewQuery("SVDPClientVisit").
+		Filter("Visitdate <=", end).
+		Filter("Visitdate >=", start).
+		Order("-Visitdate")
 	var visits []visit
 	keys, err := q.GetAll(c, &visits)
 	if err != nil {

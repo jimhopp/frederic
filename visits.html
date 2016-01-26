@@ -4,8 +4,14 @@
   {{ template "scripts" }}
   <body class="main">
    {{ template "header" . }}
+    <form action="/visits" method="GET">
+     <label>start date: <span class="invisible" id="sdatefmt">(yyyy-mm-dd)</span></label><input type="date" id="startdate" value="" name="startdate"/>
+     <label>end date: <span class="invisible" id="edatefmt">(yyyy-mm-dd)</span></label><input type="date" id="enddate" value="" name="enddate"/>
+      <input type="submit">
+    </form>
     <table class="contained">
       <thead>
+        <tr>
 	<th>Client</th>
 	<th>Visit Date</th>
 	<th>Vincentians</th>
@@ -21,7 +27,9 @@
 	<th>Furniture Vouchers</th>
 	<th>Other Vouchers</th>
 	<th>Comment</th>
-      </thead></tr>
+        </tr>
+      </thead>
+      <tbody>
       {{ range $i, $vst := .Visits }}
         <tr>
           <td class="bordered"><a href="/client/{{ .ClientId }}">{{ index $.Cltmap .ClientId }}</a></td>
@@ -41,6 +49,7 @@
           <td class="bordered">{{ .Visit.Comment }}</td>
         </tr>
       {{ end }}
+      </tbody>
     </table>
   </body>
 </html>

@@ -1,10 +1,10 @@
 {{ define "clientupdate" }}
+      <form>
       <div class="box">
       <h4>Client</h4>
-      <form>
         <label class="contained">First Name:<input type="text" id="fname" value="{{ .Clientrec.Clt.Firstname }}" name="FirstName"></label>
         <label>Last Name:<input type="text" id="lname" value="{{ .Clientrec.Clt.Lastname }}" name="LastName"></label>
-        <label>DOB:<input type="date" id="dob" value="{{ .Clientrec.Clt.DOB }}" name="dob"></label>
+        <label>DOB:<span class="invisible" id="datefmt">(yyyy-mm-dd)</span><input type="date" id="dob" value="{{ .Clientrec.Clt.DOB }}" name="dob"></label>
 	<br>
         <label class="contained">Address:<input type="text" size="40" id="address" value="{{ .Clientrec.Clt.Address }}" name="Address"></label>
         <label class="contained">Cross-street:<input type="text" size="40" id="crossstreet" value="{{ .Clientrec.Clt.CrossStreet }}" name="CrossStreet"></label>
@@ -34,7 +34,7 @@
 	  <thead>
             <tr><th colspan="4">Children</th></tr>
             <tr>
-	      <th>Name</th><th>DOB</th><th>Gender</th><th><Remove></th>
+	      <th>Name</th><th>DOB</th><th>Gender</th><th>Remove</th>
 	    </tr>
 	  </thead>
           <tbody id="addlfammbrs">
@@ -68,8 +68,10 @@
         <h4>Financials</h4>
 	<table class="contained">
           <thead>
-            <th colspan="2">Monthly Income</th>
-            <th colspan="2">Monthly Expenses</th>
+	    <tr>
+              <th colspan="2">Monthly Income</th>
+              <th colspan="2">Monthly Expenses</th>
+            </tr>
           </thead>
           <tr>
             <td><input type="number" class="number" id="incfather" name="incfather" value="{{ .Clientrec.Clt.Financials.FatherIncome }}"></td>
@@ -155,6 +157,7 @@
         <p id="status" class="hidden">Empty status</p>
         <input type="submit" id="submit" class="submit">
       </form>
+  <script type="text/javascript" src="/js/json.js"></script>
   <script>
    $( document ).ready(function() {
     console.log( 'ready!' );
@@ -164,6 +167,20 @@
       {{ else }}
         return true;
       {{ end }}
+    }
+
+    function browserSupportsDateInput() {
+      var b = false; 
+      try {
+        var tester = document.createElement('input');
+        tester.type = "date";
+        console.log("tester.type=" + tester.type);
+        console.log("browser supports date input?" + (tester.type === "date"));
+        b = tester.type === "date"; 
+      } catch (e) {
+        console.log("oops, got error testing browser date input support" + e);
+      } finally {return b;}
+  
     }
 
     var clickedrm = function(evt) {
@@ -333,12 +350,19 @@
       }
     }
 
+
     $( 'input#submit' ).val(isAdd() ? "Add" : "Update");
     $( 'input#submit' ).on('click', clickedsubmit);
     $( 'input#addfammbr' ).on('click', clickedadd);
     $( 'input[name="rmfammbr"]' ).on('click', clickedrm);
     $( 'input[name^="inc"]' ).on('focusout', lostfocus);
     $( 'input[name^="exp"]' ).on('focusout', lostfocus);
+
+    if (!browserSupportsDateInput()) {
+      console.log("trying to un-hide datefmt");
+      var lbl = $(' span#datefmt ');
+      lbl.removeClass("invisible");
+    }
 
       });
   </script>

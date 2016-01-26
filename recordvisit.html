@@ -2,6 +2,7 @@
 <html>
   <title>St. Vincent de Paul (St. Charles Borromeo Conference) Record Client Visit</title>
 {{ template "scripts" }}
+  <script type="text/javascript" src="/js/json.js"></script>
   <body class="main">
     {{ template "header" . }}
     <div class="box">
@@ -21,7 +22,7 @@
      <td>Vincentians:</td><td><input type="text" id="vincentians" value="" name="Vincentians"></td>
      </tr>
      <tr>
-      <td>Visit Date:</td><td><input type="date" id="visitdate" value="" name="visitdate">
+      <td>Visit Date:<span class="invisible" id="datefmt">(yyyy-mm-dd)</span></td><td><input type="date" id="visitdate" value="" name="visitdate">
           <a href="javascript:visitedtoday();">(Today)</a>     
      </td>
      </tr>
@@ -141,6 +142,11 @@
     $( 'input#vouchersfurniture' ).on('focusout', lostfocus);
     $( 'input#vouchersother' ).on('focusout', lostfocus);
 
+    if (!browserSupportsDateInput()) {
+      console.log("trying to un-hide datefmt");
+      var lbl = $(' span#datefmt ');
+      lbl.removeClass("invisible");
+    }
     });
     function visitedtoday() {
         today = new Date();

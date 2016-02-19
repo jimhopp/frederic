@@ -121,11 +121,12 @@ func init() {
 	http.Handle("/editclient/", ContextHandler{editclientpage})
 	http.Handle("/addclient", ContextHandler{newclientpage})
 	http.Handle("/recordvisit/", ContextHandler{recordvisitpage})
+	http.Handle("/editvisit/", ContextHandler{editvisitpage})
 	http.Handle("/visits", ContextHandler{listvisitsinrangepage})
 	http.Handle("/users", ContextHandler{edituserspage})
 	http.Handle("/api/client", ContextHandler{addclient})
 	http.Handle("/api/client/", ContextHandler{editclient})
-	http.Handle("/api/visit/", ContextHandler{addvisit})
+	http.Handle("/api/visit/", ContextHandler{visitrouter})
 	http.Handle("/api/getallclients", ContextHandler{getallclients})
 	http.Handle("/api/getallvisits/", ContextHandler{getallvisits})
 	http.Handle("/api/getvisitsinrange/", ContextHandler{getvisitsinrange})
@@ -315,19 +316,26 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 
 	q := datastore.NewQuery("SVDPClientVisit").Ancestor(key).Order("-Visitdate")
 	var visits []visit
-	_, err = q.GetAll(c, &visits)
+	visitkeys, err := q.GetAll(c, &visits)
+	vstrecs := make([]visitrec, len(visitkeys))
+
+	for i, v := range visits {
+		vstrecs[i].Id = visitkeys[i].IntID()
+		//not populating ClientId because they're all the same and we know it from client
+		vstrecs[i].Visit = v
+	}
 
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
 
 	data := struct {
 		U, LogoutUrl string
 		Clientrec    clientrec
-		Visits       []visit
+		Visitrecs    []visitrec
 	}{
 		u.Email,
 		l,
 		clientrec{clientid, clt},
-		visits,
+		vstrecs,
 	}
 
 	err = templates.ExecuteTemplate(w, "client.html", data)
@@ -449,6 +457,106 @@ func recordvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request
 		vst,
 	}
 	err = templates.ExecuteTemplate(w, "recordvisit.html", data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func editvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	if !webuserOK(c, w, r) {
+		return
+	}
+
+	u := user.Current(c)
+
+	re, err := regexp.Compile(`^/editvisit/([0-9]+)/([0-9]+)/edit$`)
+	matches := re.FindSubmatch([]byte(r.URL.Path))
+	if matches == nil {
+		http.Error(w,
+			fmt.Sprintf("id is missing in path for update request %v", r.URL.Path),
+			http.StatusBadRequest)
+		return
+	}
+	cltidstr := string(matches[1])
+	vstidstr := string(matches[2])
+
+	c.Debugf("parsed id clt %v, vst %v from %v", cltidstr, vstidstr, r.URL.Path)
+
+	if cltidstr == "" {
+		c.Errorf("cltid is missing for update request: path %v",
+			r.URL.Path)
+		http.Error(w,
+			fmt.Sprintf("id is missing in path for update request %v", r.URL.Path),
+			http.StatusBadRequest)
+		return
+	}
+
+	if vstidstr == "" {
+		c.Errorf("vstid is missing for update request: path %v",
+			r.URL.Path)
+		http.Error(w,
+			fmt.Sprintf("id is missing in path for update request %v", r.URL.Path),
+			http.StatusBadRequest)
+		return
+	}
+
+	cltid, err := strconv.ParseInt(cltidstr, 10, 64)
+	if err != nil {
+		c.Errorf("unable to parse id %v as int64: %v", cltid, err.Error())
+		http.Error(w,
+			fmt.Sprintf("unable to parse id %v as int64: %v", cltid,
+				err.Error()),
+			http.StatusBadRequest)
+		return
+	}
+
+	vstid, err := strconv.ParseInt(vstidstr, 10, 64)
+	if err != nil {
+		c.Errorf("unable to parse vst id %v as int64: %v", vstid, err.Error())
+		http.Error(w,
+			fmt.Sprintf("unable to parse id %v as int64: %v", vstid,
+				err.Error()),
+			http.StatusBadRequest)
+		return
+	}
+
+	clientkey := datastore.NewKey(c, "SVDPClient", "", cltid, nil)
+	clt := client{}
+	err = datastore.Get(c, clientkey, &clt)
+	if err == datastore.ErrNoSuchEntity {
+		http.Error(w, "Unable to find client with id "+cltidstr,
+			http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
+
+	visitkey := datastore.NewKey(c, "SVDPClientVisit", "", vstid, clientkey)
+	vst := visit{}
+	err = datastore.Get(c, visitkey, &vst)
+	if err == datastore.ErrNoSuchEntity {
+		http.Error(w, "Unable to find visit with id "+vstidstr,
+			http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	data := struct {
+		U, LogoutUrl string
+		Client       client
+		Visit        visit
+	}{
+		u.Email,
+		l,
+		clt,
+		vst,
+	}
+	err = templates.ExecuteTemplate(w, "editvisit.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

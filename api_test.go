@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -171,7 +172,7 @@ func TestGetAllVisitsInRange(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to marshal %v", visits[i])
 			}
-			req, err := inst.NewRequest("PUT", "/visit/"+
+			req, err := inst.NewRequest("PUT", "/api/visit/"+
 				strconv.FormatInt(cltids[i], 10), bytes.NewReader(data))
 			if err != nil {
 				t.Fatalf("Failed to create req: %v", err)
@@ -185,7 +186,7 @@ func TestGetAllVisitsInRange(t *testing.T) {
 			c := appengine.NewContext(req)
 			addTestUser(c, "test@example.org", true)
 
-			addvisit(c, w, req)
+			visitrouter(c, w, req)
 
 			code := w.Code
 			if code != http.StatusOK {
@@ -277,7 +278,7 @@ func TestGetAllVisits(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to marshal %v", visits[i])
 		}
-		req, err := inst.NewRequest("PUT", "/visit/"+
+		req, err := inst.NewRequest("PUT", "/api/visit/"+
 			strconv.FormatInt(cltid, 10), bytes.NewReader(data))
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
@@ -291,7 +292,7 @@ func TestGetAllVisits(t *testing.T) {
 		c := appengine.NewContext(req)
 		addTestUser(c, "test@example.org", true)
 
-		addvisit(c, w, req)
+		visitrouter(c, w, req)
 
 		code := w.Code
 		if code != http.StatusOK {
@@ -403,6 +404,88 @@ func TestUpdateClient(t *testing.T) {
 	}
 }
 
+func TestVisitRouter(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	id, err := addclienttodb(newclient, inst)
+	log.Printf("TestVisitRouter: got %v from addclienttodb\n", id)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	data := strings.NewReader(`{"Vincentians": "Michael, Mary Margaret", "VisitDate": "2011-04-01", "Giftcardamt": "100", "Numfoodboxes": "2"}`)
+	req, err := inst.NewRequest("PUT", "/api/visit/"+
+		strconv.FormatInt(id, 10), data)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org", true)
+
+	visitrouter(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusCreated)
+	}
+	body := w.Body.Bytes()
+	newrec := &visitrec{}
+	err = json.Unmarshal(body, newrec)
+	if err != nil {
+		t.Errorf("unable to parse %v: %v", string(body), err)
+	}
+	type routerreq struct {
+		path string
+		data io.Reader
+		resp int
+	}
+
+	reqs := []routerreq{
+		{"/api/visit/" + strconv.FormatInt(id, 10),
+			strings.NewReader(`{"Vincentians": "Michael, Mary Margaret", "VisitDate": "2011-04-03", "Giftcardamt": "100",
+				 "Numfoodboxes": "2"}`),
+			200},
+		{"/api/visit/" + strconv.FormatInt(newrec.ClientId, 10) + "/" + strconv.FormatInt(newrec.Id, 10) + "/edit",
+			strings.NewReader(`{"Vincentians": "Michael, Mary Margaret", "VisitDate": "2011-04-01", "Giftcardamt": "199",
+				 "Numfoodboxes": "2", "Comment": "updated"}`),
+			200},
+		{"/visit/", nil, 400},
+		{"/viit/12345", nil, 400},
+	}
+	for _, u := range reqs {
+
+		req, err := inst.NewRequest("PUT", u.path, u.data)
+		req.Header = map[string][]string{"Content-Type": {"application/json"}}
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+
+		visitrouter(c, w, req)
+
+		code := w.Code
+		if code != u.resp {
+			t.Errorf("got code %v, want %v", code, u.resp)
+		}
+	}
+}
+
 func TestAddVisit(t *testing.T) {
 	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {
@@ -418,7 +501,7 @@ func TestAddVisit(t *testing.T) {
 	}
 
 	data := strings.NewReader(`{"Vincentians": "Michael, Mary Margaret", "VisitDate": "2011-04-03", "Giftcardamt": "100", "Numfoodboxes": "2"}`)
-	req, err := inst.NewRequest("PUT", "/visit/"+
+	req, err := inst.NewRequest("PUT", "/api/visit/"+
 		strconv.FormatInt(id, 10), data)
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
@@ -433,7 +516,7 @@ func TestAddVisit(t *testing.T) {
 	c := appengine.NewContext(req)
 	addTestUser(c, "test@example.org", true)
 
-	addvisit(c, w, req)
+	visitrouter(c, w, req)
 
 	code := w.Code
 	if code != http.StatusOK {
@@ -469,6 +552,140 @@ func TestAddVisit(t *testing.T) {
 	}
 }
 
+func TestEditVisit(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	cltid, err := addclienttodb(newclient, inst)
+	log.Printf("TestEditVisit: got %v from addclienttodb\n", cltid)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	visits := []visit{
+		{Vincentians: "Michael, Mary Margaret",
+			Visitdate: "2013-04-03"},
+		{Vincentians: "Irene, Jim",
+			Visitdate: "2013-05-03"},
+	}
+
+	vstids := make([]int64, 2)
+
+	for i, v := range visits {
+		data, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("Failed to marshal %v", v)
+		}
+		req, err := inst.NewRequest("PUT", "/api/visit/"+
+			strconv.FormatInt(cltid, 10), bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header = map[string][]string{
+			"Content-Type": {"application/json"},
+		}
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+		addTestUser(c, "test@example.org", true)
+
+		visitrouter(c, w, req)
+
+		code := w.Code
+		if code != http.StatusOK {
+			t.Errorf("got code %v, want %v", code, http.StatusCreated)
+		}
+
+		body := w.Body.Bytes()
+		newrec := &visitrec{}
+		err = json.Unmarshal(body, newrec)
+		if err != nil {
+			t.Errorf("unable to parse %v: %v", string(body), err)
+		}
+		vstids[i] = newrec.Id
+	}
+
+	visits[0].Comment = "id is " + strconv.FormatInt(vstids[0], 10)
+	visits[1].Comment = "id is " + strconv.FormatInt(vstids[1], 10)
+	for i, v := range visits {
+		data, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("Failed to marshal %v", v)
+		}
+		req, err := inst.NewRequest("PUT", "/api/visit/"+
+			strconv.FormatInt(cltid, 10)+
+			"/"+strconv.FormatInt(vstids[i], 10)+"/edit", bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header = map[string][]string{
+			"Content-Type": {"application/json"},
+		}
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+
+		visitrouter(c, w, req)
+
+		code := w.Code
+		if code != http.StatusOK {
+			t.Errorf("got code %v, want %v", code, http.StatusCreated)
+		}
+
+		body := w.Body.Bytes()
+		newrec := &visitrec{}
+		err = json.Unmarshal(body, newrec)
+		if err != nil {
+			t.Errorf("unable to parse %v: %v", string(body), err)
+		}
+	}
+
+	req, err := inst.NewRequest("GET", "/api/visit/"+
+		strconv.FormatInt(cltid, 10), nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w := httptest.NewRecorder()
+
+	c := appengine.NewContext(req)
+	getallvisits(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	body := w.Body.Bytes()
+	createdvisitrecs := []visitrec{}
+	err = json.Unmarshal(body, &createdvisitrecs)
+	if err != nil {
+		t.Errorf("error unmarshaling response to getvisits %v\n", err)
+	}
+	if len(createdvisitrecs) != len(visits) {
+		t.Errorf("got %v visits, want %v\n", len(createdvisitrecs),
+			1)
+	}
+	for i := 0; i < len(visits); i++ {
+		found := false
+		for j := 0; j < len(createdvisitrecs); j++ {
+			if reflect.DeepEqual(createdvisitrecs[j].Visit, visits[i]) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("unable to find %v in %v",
+				visits[i], &createdvisitrecs)
+		}
+	}
+}
 func TestUpdateInvalidData(t *testing.T) {
 	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {

@@ -136,6 +136,39 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(b))
 }
 
+func visitrouter(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	/*
+	 /api/visit/123 goes to addvisit,
+	 /api/visit/123/456/edit goes to editvisit
+	*/
+	if !apiuserOK(c, w) {
+		return
+	}
+
+	re, err := regexp.Compile(`^/api/visit/([0-9]+)(/[0-9]+/edit)?$`)
+	if err != nil {
+		c.Debugf("failed to create expr: %v", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	matches := re.FindSubmatch([]byte(r.URL.Path))
+	if matches != nil {
+		c.Debugf("found %v matches in %v", len(matches), r.URL.Path)
+		for i, s := range matches {
+			c.Debugf("%v: %v", i, string(s))
+		}
+	} else {
+		c.Debugf("no matches in %v", r.URL.Path)
+		http.Error(w, "no matches in url path", http.StatusBadRequest)
+		return
+	}
+	if len(matches[2]) > 0 {
+		editvisit(c, w, r)
+	} else {
+		addvisit(c, w, r)
+	}
+}
+
 func addvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !apiuserOK(c, w) {
 		return
@@ -193,6 +226,95 @@ func addvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	newrec := &visitrec{key.IntID(), id, *vst}
+
+	b, err := json.Marshal(newrec)
+	if err != nil {
+		c.Errorf("marshaling error:%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	c.Infof("returning %v\n", string(b))
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, string(b))
+}
+
+func editvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	if !apiuserOK(c, w) {
+		return
+	}
+
+	vst := &visit{}
+	body := make([]byte, r.ContentLength)
+	_, err := r.Body.Read(body)
+	err = json.Unmarshal(body, vst)
+	c.Infof("api/editvisit: got %v\n", string(body))
+	if err != nil {
+		c.Errorf("unmarshaling error:%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	re, err := regexp.Compile(`^/api/visit/([0-9]+)/([0-9]+)/edit$`)
+	matches := re.FindSubmatch([]byte(r.URL.Path))
+	if matches == nil {
+		http.Error(w,
+			fmt.Sprintf("id is missing in path for update request %v", string(body)),
+			http.StatusBadRequest)
+		return
+	}
+	cltidstr := string(matches[1])
+	vstidstr := string(matches[2])
+
+	c.Debugf("parsed id clt %v, vst %v from %v", cltidstr, vstidstr, r.URL.Path)
+
+	if cltidstr == "" {
+		c.Errorf("cltid is missing for update request: path %v, data %v",
+			r.URL.Path, string(body))
+		http.Error(w,
+			fmt.Sprintf("id is missing in path for update request %v", string(body)),
+			http.StatusBadRequest)
+		return
+	}
+
+	if vstidstr == "" {
+		c.Errorf("vstid is missing for update request: path %v, data %v",
+			r.URL.Path, string(body))
+		http.Error(w,
+			fmt.Sprintf("id is missing in path for update request %v", string(body)),
+			http.StatusBadRequest)
+		return
+	}
+
+	cltid, err := strconv.ParseInt(cltidstr, 10, 64)
+	if err != nil {
+		c.Errorf("unable to parse id %v as int64: %v", cltid, err.Error())
+		http.Error(w,
+			fmt.Sprintf("unable to parse id %v as int64: %v", cltid,
+				err.Error()),
+			http.StatusBadRequest)
+		return
+	}
+
+	vstid, err := strconv.ParseInt(vstidstr, 10, 64)
+	if err != nil {
+		c.Errorf("unable to parse vst id %v as int64: %v", vstid, err.Error())
+		http.Error(w,
+			fmt.Sprintf("unable to parse id %v as int64: %v", vstid,
+				err.Error()),
+			http.StatusBadRequest)
+		return
+	}
+
+	ikey := datastore.NewKey(c, "SVDPClientVisit", "", vstid,
+		datastore.NewKey(c, "SVDPClient", "", cltid, nil))
+	key, err := datastore.Put(c, ikey, vst)
+	if err != nil {
+		c.Errorf("datastore error on Put: :%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	newrec := &visitrec{key.IntID(), key.Parent().IntID(), *vst}
 
 	b, err := json.Marshal(newrec)
 	if err != nil {

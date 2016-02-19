@@ -63,6 +63,7 @@
         <h4>Visits</h4>
         <table class="contained" id="Visits">
           <thead>
+            <th></th>
             <th>Date</th>
 	    <th>Vincentians</th>
 	    <th>Assistance Requested</th>
@@ -78,22 +79,25 @@
 	    <th>Vouchers - Other</th>
 	    <th>Comment</th>
           </thead>
-            {{ range $i, $visit := .Visits }}
+            {{ range $i, $visit := .Visitrecs }}
               <tr>
-                <td><input type="date" id="visit{{ $i }}.visitdate" name="visit{{ $i }}.visitdate" value="{{ .Visitdate }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.vincentians" name="visit{{ $i }}.vincentians" value="{{ .Vincentians }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.assistancerequested" name="visit{{ $i }}.assistancerequested" value="{{ .Assistancerequested }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.giftcardamt" name="visit{{ $i }}.giftcardamt" value="{{ .Giftcardamt }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.numfoodboxes" name="visit{{ $i }}.numfoodboxes" value="{{ .Numfoodboxes }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.rentassistance" name="visit{{ $i }}.rentassistance" value="{{ .Rentassistance }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.utilitiesassistance" name="visit{{ $i }}.utilitiesassistance" value="{{ .Utilitiesassistance }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.waterbillassistance" name="visit{{ $i }}.waterbillassistance" value="{{ .Waterbillassistance }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.otherassistancetype" name="visit{{ $i }}.otherassistancetype" value="{{ .Otherassistancetype }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.otherassistanceamt" name="visit{{ $i }}.otherassistanceamt" value="{{ .Otherassistanceamt }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.vouchersclothing" name="visit{{ $i }}.vouchersclothing" value="{{ .Vouchersclothing }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.vouchersfurniture" name="visit{{ $i }}.vouchersfurniture" value="{{ .Vouchersfurniture }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.vouchersother" name="visit{{ $i }}.vouchersother" value="{{ .Vouchersother }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.comment" name="visit{{ $i }}.comment" value="{{ .Comment }}" disabled="true"></td>
+                <td>
+                  <a href="/editvisit/{{ $.Clientrec.Id }}/{{ .Id }}/edit">(edit)</a>
+                </td>
+                <td><input type="date" id="visit{{ $i }}.visitdate" name="visit{{ $i }}.visitdate" value="{{ .Visit.Visitdate }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.vincentians" name="visit{{ $i }}.vincentians" value="{{ .Visit.Vincentians }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.assistancerequested" name="visit{{ $i }}.assistancerequested" value="{{ .Visit.Assistancerequested }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.giftcardamt" name="visit{{ $i }}.giftcardamt" value="{{ .Visit.Giftcardamt }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.numfoodboxes" name="visit{{ $i }}.numfoodboxes" value="{{ .Visit.Numfoodboxes }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.rentassistance" name="visit{{ $i }}.rentassistance" value="{{ .Visit.Rentassistance }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.utilitiesassistance" name="visit{{ $i }}.utilitiesassistance" value="{{ .Visit.Utilitiesassistance }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.waterbillassistance" name="visit{{ $i }}.waterbillassistance" value="{{ .Visit.Waterbillassistance }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.otherassistancetype" name="visit{{ $i }}.otherassistancetype" value="{{ .Visit.Otherassistancetype }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.otherassistanceamt" name="visit{{ $i }}.otherassistanceamt" value="{{ .Visit.Otherassistanceamt }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.vouchersclothing" name="visit{{ $i }}.vouchersclothing" value="{{ .Visit.Vouchersclothing }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.vouchersfurniture" name="visit{{ $i }}.vouchersfurniture" value="{{ .Visit.Vouchersfurniture }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.vouchersother" name="visit{{ $i }}.vouchersother" value="{{ .Visit.Vouchersother }}" disabled="true"></td>
+                <td><input type="text" id="visit{{ $i }}.comment" name="visit{{ $i }}.comment" value="{{ .Visit.Comment }}" disabled="true"></td>
               </tr>
             {{ end }}
         </table>

@@ -25,7 +25,7 @@ type EndpointTest struct {
 var endpoints = []EndpointTest{
 	{"/api/client", false, addclient, http.StatusUnauthorized},
 	{"/api/client/", false, editclient, http.StatusUnauthorized},
-	{"/api/visit/", false, addvisit, http.StatusUnauthorized},
+	{"/api/visit/", false, visitrouter, http.StatusUnauthorized},
 	{"/api/getallclients", false, getallclients, http.StatusUnauthorized},
 	{"/api/getallvisits/", false, getallvisits, http.StatusUnauthorized},
 	{"/api/getvisitsinrange/", false, getvisitsinrange, http.StatusUnauthorized},
@@ -38,6 +38,7 @@ var endpoints = []EndpointTest{
 	{"/newclient", true, newclientpage, http.StatusFound},
 	{"/editclient", true, editclientpage, http.StatusFound},
 	{"/recordvisit/", true, recordvisitpage, http.StatusFound},
+	{"/editvisit/", true, editvisitpage, http.StatusFound},
 }
 
 func TestHomePage(t *testing.T) {
@@ -477,12 +478,56 @@ func TestAddVisitPage(t *testing.T) {
 	rows := []string{`frederic`,
 		`ozanam`,
 		`method: "PUT"`,
-		`url: "/api/visit/`,
 	}
 	for i := 0; i < len(rows); i++ {
 		if !bytes.Contains(body, []byte(rows[i])) {
 			t.Errorf("got body %v, did not contain %v", string(body), rows[i])
 		}
+	}
+}
+
+func TestEditVisitPageForNonexistentClient(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+
+	id, err := addclienttodb(newclient, inst)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	id++
+
+	sid := strconv.FormatInt(id, 10)
+
+	url := "/editvisit/" + sid + "/12345/edit"
+	req, err := inst.NewRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org", true)
+
+	editvisitpage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusNotFound {
+		t.Errorf("got code %v, want %v", code, http.StatusNotFound)
+	}
+
+	body := w.Body.Bytes()
+	expected := []byte("Unable to find client with id " + sid)
+	if !bytes.Contains(body, expected) {
+		t.Errorf("got body %v, did not contain %v", string(body),
+			string(expected))
 	}
 }
 
@@ -566,6 +611,67 @@ func TestAddVisitPageMissingClient(t *testing.T) {
 	}
 }
 
+func TestEditVisitPageMissingPathInfo(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	url := "/editvisit/"
+	req, err := inst.NewRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+
+	addTestUser(c, "test@example.org", true)
+
+	editvisitpage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusBadRequest {
+		t.Errorf("got code %v, want %v", code, http.StatusBadRequest)
+	}
+
+	body := w.Body.Bytes()
+	expected := []byte("id is missing in path for update request /editvisit/")
+	if !bytes.Contains(body, expected) {
+		t.Errorf("got body %v, did not contain %v", string(body),
+			string(expected))
+	}
+
+	url += "12345"
+	req, err = inst.NewRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w = httptest.NewRecorder()
+	c = appengine.NewContext(req)
+
+	editvisitpage(c, w, req)
+
+	code = w.Code
+	if code != http.StatusBadRequest {
+		t.Errorf("got code %v, want %v", code, http.StatusBadRequest)
+	}
+
+	body = w.Body.Bytes()
+	expected = []byte("id is missing in path for update request /editvisit/")
+	if !bytes.Contains(body, expected) {
+		t.Errorf("got body %v, did not contain %v", string(body),
+			string(expected))
+	}
+
+}
+
 func TestListUsersPage(t *testing.T) {
 	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {
@@ -646,6 +752,86 @@ func TestListUsersPageNotAdmin(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusForbidden)
 	}
 
+}
+
+func TestEditVisitPage(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	cltid, err := addclienttodb(newclient, inst)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	visits := []visit{
+		{Vincentians: "Michael, Mary Margaret",
+			Visitdate:           "2013-02-03",
+			Assistancerequested: "test1"},
+		{Vincentians: "Irene, Jim",
+			Visitdate:           "2013-01-03",
+			Assistancerequested: "test2"},
+	}
+	visitIds := make([]int64, len(visits))
+	for i, vst := range visits {
+		data, err := json.Marshal(vst)
+		if err != nil {
+			t.Fatalf("Failed to marshal %v", visits[i])
+		}
+		req, err := inst.NewRequest("PUT", "/api/visit/"+
+			strconv.FormatInt(cltid, 10), bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header = map[string][]string{
+			"Content-Type": {"application/json"},
+		}
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+		addTestUser(c, "test@example.org", true)
+
+		visitrouter(c, w, req)
+
+		code := w.Code
+		if code != http.StatusOK {
+			t.Errorf("got code %v, want %v", code, http.StatusCreated)
+		}
+
+		body := w.Body.Bytes()
+		newrec := &visitrec{}
+		err = json.Unmarshal(body, newrec)
+		if err != nil {
+			t.Errorf("unable to parse %v: %v", string(body), err)
+		}
+		visitIds[i] = newrec.Id
+	}
+
+	req, err := inst.NewRequest("GET", "/editvisit/"+strconv.FormatInt(cltid, 10)+
+		"/"+strconv.FormatInt(visitIds[0], 10)+"/edit", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w := httptest.NewRecorder()
+
+	c := appengine.NewContext(req)
+	editvisitpage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	body := w.Body.Bytes()
+	if !bytes.Contains(body, []byte(visits[0].Assistancerequested)) {
+		t.Errorf("unable to find %v in %v",
+			visits[0].Assistancerequested, string(body))
+	}
 }
 
 func TestListVisitsInRange(t *testing.T) {

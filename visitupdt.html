@@ -54,7 +54,7 @@
       <td>Vouchers - other:</td><td><input type="number" class="number" id="vouchersother" value="{{ .Visit.Vouchersother }}" name="vouchersother"></td>
      </tr>
      <tr>
-      <td>Comment:</td><td><input type="text" id="comment" value="{{ .Visit.Comment }}" name="comment"></td>
+      <td>Comment:</td><td><textarea id="comment" name="comment" cols="50">{{ .Visit.Comment }}</textarea></td>
      </tr>
      </table>
      </div>
@@ -120,6 +120,10 @@
     $( 'input#submit' ).val(visitId == null ? 'Record Visit' : 'Update Visit');
     $( 'input#submit' ).on('click', clickedsubmit);
     $( 'a#viewclient' ).attr('href', '/client/' + clientId);
+    var cmt = $( 'textarea#comment' )[0];
+    var len = cmt.value.length;
+    console.log("len=" + len);  
+    cmt.rows = len > 0 ? Math.ceil(len / cmt.cols) : 1;
 
     var lostfocus = function(evt) {
       evt.preventDefault();

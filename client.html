@@ -26,7 +26,7 @@
           </select>
         </label>
         <br>
-        <label class="contained">Notes:<textarea rows="4" cols="40"id="notes" disabled="true">{{ .Clientrec.Clt.Notes }}</textarea></label>
+        <label class="contained">Notes:<textarea rows="4" cols="40" id="notes" disabled="true">{{ .Clientrec.Clt.Notes }}</textarea></label>
         </div>
         <br>
         <br>
@@ -97,7 +97,7 @@
                 <td><input type="text" id="visit{{ $i }}.vouchersclothing" name="visit{{ $i }}.vouchersclothing" value="{{ .Visit.Vouchersclothing }}" disabled="true"></td>
                 <td><input type="text" id="visit{{ $i }}.vouchersfurniture" name="visit{{ $i }}.vouchersfurniture" value="{{ .Visit.Vouchersfurniture }}" disabled="true"></td>
                 <td><input type="text" id="visit{{ $i }}.vouchersother" name="visit{{ $i }}.vouchersother" value="{{ .Visit.Vouchersother }}" disabled="true"></td>
-                <td><input type="text" id="visit{{ $i }}.comment" name="visit{{ $i }}.comment" value="{{ .Visit.Comment }}" disabled="true"></td>
+                <td><textarea id="visit{{ $i }}.comment" name="visit.comment" disabled="true">{{ .Visit.Comment }}</textarea></td>
               </tr>
             {{ end }}
         </table>
@@ -194,6 +194,12 @@
   <script>
    $( document ).ready(function() {
     console.log( 'ready!' );
+    $( 'textarea[name="visit.comment"]' ).each(function() {
+       len = this.value.length; 
+       console.log("len of " + this.value + " is " + len);  
+       this.rows = len > 0 ? Math.ceil(len / this.cols) : 1;
+       console.log("rows=" + this.rows + ", cols=" + this.cols);
+    });
    });
   </script>
   </body>

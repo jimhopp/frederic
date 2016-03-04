@@ -58,6 +58,27 @@
      </tr>
      </table>
      </div>
+     {{ if .Updates }}
+       <br>
+       <br>
+       <div class="box">
+         <h4>Updates</h4>
+         <table class="contained">
+           <thead>
+             <th>User</th>
+	     <th>When</th>
+           </thead>
+           <tbody> 
+             {{ range $i, $update := .Updates }}
+               <tr>
+                 <td>{{ .User }}</td>
+	         <td>{{ .When }}</td>
+               </tr>
+             {{ end }}
+           </tbody>
+         </table>
+       </div>
+     {{ end }}
      <br>
     <p id="status" class="hidden">Empty status</p>
      <input type="submit" id="submit" class="submit">

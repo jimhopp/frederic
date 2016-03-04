@@ -37,10 +37,10 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	new := &client{}
+	clt := &client{}
 	body := make([]byte, r.ContentLength)
 	_, err := r.Body.Read(body)
-	err = json.Unmarshal(body, new)
+	err = json.Unmarshal(body, clt)
 	c.Infof("addclient: got %v\n", string(body))
 	if err != nil {
 		c.Errorf("unmarshaling error:%v\n", err)
@@ -49,18 +49,28 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	ikey := datastore.NewIncompleteKey(c, "SVDPClient", nil)
-	key, err := datastore.Put(c, ikey, new)
+	key, err := datastore.Put(c, ikey, clt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	created := new(update)
+	created.User = user.Current(c).String()
+	created.When = time.Now().String()
+	ikey = datastore.NewIncompleteKey(c, "SVDPUpdate", key)
+	_, err = datastore.Put(c, ikey, created)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	newrec := &clientrec{key.IntID(),
-		client{new.Firstname, new.Lastname, new.Address, new.Apt,
-			new.CrossStreet, new.DOB, new.Phonenum, new.Altphonenum,
-			new.Altphonedesc, new.Ethnicity, new.ReferredBy,
-			new.Notes, new.Adultmales, new.Adultfemales,
-			new.Fammbrs, new.Financials},
+		client{clt.Firstname, clt.Lastname, clt.Address, clt.Apt,
+			clt.CrossStreet, clt.DOB, clt.Phonenum, clt.Altphonenum,
+			clt.Altphonedesc, clt.Ethnicity, clt.ReferredBy,
+			clt.Notes, clt.Adultmales, clt.Adultfemales,
+			clt.Fammbrs, clt.Financials},
 	}
 	b, err := json.Marshal(newrec)
 	c.Infof("returning %v\n", string(b))
@@ -123,6 +133,15 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	latest := new(update)
+	latest.User = user.Current(c).String()
+	latest.When = time.Now().String()
+	ikey = datastore.NewIncompleteKey(c, "SVDPUpdate", key)
+	_, err = datastore.Put(c, ikey, latest)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	newrec := &clientrec{key.IntID(), *clt}
 
 	b, err := json.Marshal(newrec)
@@ -225,6 +244,18 @@ func addvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	created := new(update)
+	created.User = user.Current(c).String()
+	created.When = time.Now().String()
+
+	ikey = datastore.NewIncompleteKey(c, "SVDPUpdate", key)
+	_, err = datastore.Put(c, ikey, created)
+	if err != nil {
+		c.Errorf("datastore error on Put: :%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	newrec := &visitrec{key.IntID(), id, *vst}
 
 	b, err := json.Marshal(newrec)
@@ -308,6 +339,18 @@ func editvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	ikey := datastore.NewKey(c, "SVDPClientVisit", "", vstid,
 		datastore.NewKey(c, "SVDPClient", "", cltid, nil))
 	key, err := datastore.Put(c, ikey, vst)
+	if err != nil {
+		c.Errorf("datastore error on Put: :%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	latest := new(update)
+	latest.User = user.Current(c).String()
+	latest.When = time.Now().String()
+
+	ikey = datastore.NewIncompleteKey(c, "SVDPUpdate", key)
+	_, err = datastore.Put(c, ikey, latest)
 	if err != nil {
 		c.Errorf("datastore error on Put: :%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -507,6 +550,18 @@ func editusers(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		if err = datastore.DeleteMulti(c, deletedkeys); err != nil {
 			c.Errorf("error deleting users: %v", err)
 		}
+	}
+
+	latest := new(update)
+	latest.User = u.String()
+	latest.When = time.Now().String()
+
+	ikey := datastore.NewIncompleteKey(c, "SVDPUserUpdate", nil)
+	_, err = datastore.Put(c, ikey, latest)
+	if err != nil {
+		c.Errorf("datastore error: :%v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	nb, err := json.Marshal(&b1)

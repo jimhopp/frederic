@@ -20,6 +20,18 @@
       </tbody>
     </table>
 
+    <table>
+      <thead>
+        <th>User</th><th>When</th>
+      </thead>
+      <tbody>
+      {{ range $i, $update := .Updates }}
+        <tr>
+          <td>{{ .User }}</td><td>{{ .When }}</td>
+        </tr>
+      {{ end }}
+      </tbody>
+    </table>
       <p id="status" class="hidden">Empty status</p>
       <form>
         <input type="submit" id="submit" class="submit">

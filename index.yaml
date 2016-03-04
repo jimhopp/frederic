@@ -20,3 +20,15 @@ indexes:
   properties:
   - name: Visitdate
     direction: desc
+
+- kind: SVDPUpdate
+  ancestor: yes
+  properties:
+  - name: When
+    direction: desc
+
+- kind: SVDPUpdates
+  ancestor: yes
+  properties:
+  - name: When
+    direction: desc

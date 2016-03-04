@@ -58,12 +58,29 @@ func TestAddClient(t *testing.T) {
 
 	q := datastore.NewQuery("SVDPClient")
 	clients := make([]client, 0, 10)
-	if _, err := q.GetAll(c, &clients); err != nil {
+	keys, err := q.GetAll(c, &clients)
+	if err != nil {
 		t.Fatalf("error on GetAll: %v", err)
 		return
 	}
 	if len(clients) != 1 {
 		t.Errorf("got %v records in query, expected %v", len(clients), 1)
+	}
+
+	for _, k := range keys {
+		var updates []update
+		q = datastore.NewQuery("SVDPUpdate").Ancestor(k)
+		_, err = q.GetAll(c, &updates)
+		if err != nil {
+			t.Fatalf("error on SVDPUpdate GetAll: %v", err)
+			return
+		}
+		if len(updates) != 1 {
+			t.Errorf("got %v updates, expected 1", len(updates))
+		}
+		if updates[0].User != "test@example.org" {
+			t.Errorf("update user is %v but expected test@example.org", updates[0].User)
+		}
 	}
 }
 
@@ -402,6 +419,20 @@ func TestUpdateClient(t *testing.T) {
 	if !reflect.DeepEqual(&clt, expectedc) {
 		t.Errorf("db record shows %v, want %v", clt, expectedc)
 	}
+
+	var updates []update
+	q := datastore.NewQuery("SVDPUpdate").Ancestor(key).Order("When")
+	_, err = q.GetAll(c, &updates)
+	if err != nil {
+		t.Fatalf("error on SVDPUpdate GetAll: %v", err)
+		return
+	}
+	if len(updates) != 2 {
+		t.Errorf("got %v updates, expected 2", len(updates))
+	}
+	if updates[1].User != "test@example.org" {
+		t.Errorf("update user is %v but expected test@example.org", updates[1].User)
+	}
 }
 
 func TestVisitRouter(t *testing.T) {
@@ -550,6 +581,19 @@ func TestAddVisit(t *testing.T) {
 	if !reflect.DeepEqual(&vst, expectedv) {
 		t.Errorf("db record shows %v, want %v", vst, expectedv)
 	}
+	var updates []update
+	q := datastore.NewQuery("SVDPUpdate").Ancestor(key)
+	ukeys, err := q.GetAll(c, &updates)
+	if err != nil {
+		t.Fatalf("error on SVDPUpdate GetAll: %v", err)
+		return
+	}
+	if len(ukeys) != 1 {
+		t.Errorf("got %v updates, expected 1", len(updates))
+	}
+	if updates[0].User != "test@example.org" {
+		t.Errorf("update user is %v but expected test@example.org", updates[0].User)
+	}
 }
 
 func TestEditVisit(t *testing.T) {
@@ -683,6 +727,23 @@ func TestEditVisit(t *testing.T) {
 		if !found {
 			t.Errorf("unable to find %v in %v",
 				visits[i], &createdvisitrecs)
+		}
+	}
+	for _, vid := range vstids {
+		var updates []update
+		k := datastore.NewKey(c, "SVDPClientVisit", "", vid,
+			datastore.NewKey(c, "SVDPClient", "", cltid, nil))
+		q := datastore.NewQuery("SVDPUpdate").Ancestor(k).Order("When")
+		ukeys, err := q.GetAll(c, &updates)
+		if err != nil {
+			t.Fatalf("error on SVDPUpdate GetAll: %v", err)
+			return
+		}
+		if len(ukeys) != 2 {
+			t.Errorf("got %v updates, expected 2", len(updates))
+		}
+		if updates[1].User != "test@example.org" {
+			t.Errorf("update user is %v but expected test@example.org", updates[1].User)
 		}
 	}
 }
@@ -925,6 +986,19 @@ func TestAddUsers(t *testing.T) {
 			t.Errorf("user %v not authorized", e[i])
 		}
 	}
+	var updates []update
+	q := datastore.NewQuery("SVDPUserUpdate")
+	ukeys, err := q.GetAll(c, &updates)
+	if err != nil {
+		t.Fatalf("error on SVDPUserUpdate GetAll: %v", err)
+		return
+	}
+	if len(ukeys) != 1 {
+		t.Errorf("got %v updates, expected 1", len(updates))
+	}
+	if updates[0].User != "test@example.org" {
+		t.Errorf("update user is %v but expected test@example.org", updates[0].User)
+	}
 }
 
 func TestAddUsersMissingIds(t *testing.T) {
@@ -1035,6 +1109,19 @@ func TestEditUsers(t *testing.T) {
 		if !a {
 			t.Errorf("user %v not authorized", e1[i])
 		}
+	}
+	var updates []update
+	q := datastore.NewQuery("SVDPUserUpdate")
+	ukeys, err := q.GetAll(c, &updates)
+	if err != nil {
+		t.Fatalf("error on SVDPUserUpdate GetAll: %v", err)
+		return
+	}
+	if len(ukeys) != 2 {
+		t.Errorf("got %v updates, expected 2", len(updates))
+	}
+	if updates[0].User != "test@example.org" {
+		t.Errorf("update user is %v but expected test@example.org", updates[0].User)
 	}
 }
 

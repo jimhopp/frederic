@@ -81,6 +81,11 @@ type financials struct {
 	TotalIncome           string
 }
 
+type update struct {
+	User string
+	When string
+}
+
 type visit struct {
 	Vincentians         string
 	Visitdate           string
@@ -317,6 +322,13 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	q := datastore.NewQuery("SVDPClientVisit").Ancestor(key).Order("-Visitdate")
 	var visits []visit
 	visitkeys, err := q.GetAll(c, &visits)
+	if err != nil {
+		c.Warningf("got error %v on datastore get for visits with key %v\n", err,
+			key)
+		http.Error(w, "unable to find visits",
+			http.StatusInternalServerError)
+		return
+	}
 	vstrecs := make([]visitrec, len(visitkeys))
 
 	for i, v := range visits {
@@ -325,17 +337,31 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 		vstrecs[i].Visit = v
 	}
 
+	q = datastore.NewQuery("SVDPUpdate").Ancestor(key).Order("-When")
+	var updates []update
+	_, err = q.GetAll(c, &updates)
+
+	if err != nil {
+		c.Warningf("got error %v on datastore get for updates with key %v\n", err,
+			key)
+		http.Error(w, "unable to find updates",
+			http.StatusInternalServerError)
+		return
+	}
+
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
 
 	data := struct {
 		U, LogoutUrl string
 		Clientrec    clientrec
 		Visitrecs    []visitrec
+		Updates      []update
 	}{
 		u.Email,
 		l,
 		clientrec{clientid, clt},
 		vstrecs,
+		updates,
 	}
 
 	err = templates.ExecuteTemplate(w, "client.html", data)
@@ -450,11 +476,13 @@ func recordvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request
 		U, LogoutUrl string
 		Client       client
 		Visit        visit
+		Updates      []update
 	}{
 		u.Email,
 		l,
 		clt,
 		vst,
+		nil,
 	}
 	err = templates.ExecuteTemplate(w, "recordvisit.html", data)
 	if err != nil {
@@ -546,15 +574,25 @@ func editvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	var updates []update
+	q := datastore.NewQuery("SVDPUpdate").Ancestor(visitkey).Order("-When")
+	_, err = q.GetAll(c, &updates)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	data := struct {
 		U, LogoutUrl string
 		Client       client
 		Visit        visit
+		Updates      []update
 	}{
 		u.Email,
 		l,
 		clt,
 		vst,
+		updates,
 	}
 	err = templates.ExecuteTemplate(w, "editvisit.html", data)
 	if err != nil {
@@ -599,13 +637,25 @@ func edituserspage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	}
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
 
+	var updates []update
+	q = datastore.NewQuery("SVDPUserUpdate").Order("-When")
+	keys, err = q.GetAll(c, &updates)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	c.Infof("UserUpdates %v", updates)
+
 	data := struct {
 		U, LogoutUrl string
 		Users        useredit
+		Updates      []update
 	}{
 		u.Email,
 		l,
 		resp,
+		updates,
 	}
 	err = templates.ExecuteTemplate(w, "users.html", data)
 	if err != nil {

@@ -2,6 +2,7 @@ package frederic
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -45,6 +46,10 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		c.Errorf("unmarshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err = checkClientRequired(clt); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -91,6 +96,11 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		c.Errorf("unmarshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err = checkClientRequired(clt); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -155,6 +165,36 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(b))
 }
 
+func checkClientRequired(clt *client) error {
+
+	onlyWS, err := regexp.Compile(`^[\s]*$`)
+	if err != nil {
+		return err
+	}
+	if onlyWS.MatchString(clt.Firstname) {
+		return errors.New("Firstname is empty and cannot be")
+	}
+	if onlyWS.MatchString(clt.Lastname) {
+		return errors.New("Lastname is empty and cannot be")
+	}
+	return nil
+}
+
+func checkVisitRequired(vst *visit) error {
+
+	onlyWS, err := regexp.Compile(`^[\s]*$`)
+	if err != nil {
+		return err
+	}
+	if onlyWS.MatchString(vst.Visitdate) {
+		return errors.New("Visitdate is empty and cannot be")
+	}
+	if onlyWS.MatchString(vst.Vincentians) {
+		return errors.New("Vincentians is empty and cannot be")
+	}
+	return nil
+}
+
 func visitrouter(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	/*
 	 /api/visit/123 goes to addvisit,
@@ -201,6 +241,11 @@ func addvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		c.Errorf("unmarshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err = checkVisitRequired(vst); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -282,6 +327,11 @@ func editvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		c.Errorf("unmarshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err = checkVisitRequired(vst); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

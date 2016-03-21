@@ -104,9 +104,37 @@
 
     var clickedsubmit = function(evt) {
 
+      var visitdate = $( 'input#visitdate' );
+      var vincentians = $( 'input#vincentians' );
+
+      var onlyWS = /^\s*$/; 
+      if (onlyWS.test(visitdate.val())) {
+        console.log('visitdate is whitespace-only'); 
+        visitdate.addClass('error');
+        var status = $( '#status' );
+        status.text('Visit Date is empty, and cannot be');
+        status.removeClass('hidden');
+        return false;
+      }
+      else {
+        visitdate.removeClass('error');
+      }
+
+      if (onlyWS.test(vincentians.val())) {
+        console.log('vincentians is whitespace-only'); 
+        vincentians.addClass('error');
+        var status = $( '#status' );
+        status.text('Vincentians is empty, and cannot be');
+        status.removeClass('hidden');
+        return false;
+      }
+      else {
+        vincentians.removeClass('error');
+      }
+
       var visit = {
-        Vincentians: $( 'input#vincentians' ).val(),
-        Visitdate: $( 'input#visitdate' ).val(),
+        Vincentians: vincentians.val(),
+        Visitdate: visitdate.val(),
         Assistancerequested: $( 'input#assistancerequested' ).val(),
         Giftcardamt: $( 'input#giftcardamt' ).val(),
         Numfoodboxes: $( 'input#numfoodboxes' ).val(),
@@ -134,7 +162,7 @@
     $( 'input#submit' ).addClass('hidden');
   })
   .fail(function( jqXHR, textStatus, errorThrown ) {
-    alert( "failure: " + textStatus + ',' + errorThrown + JSON.stringify(jqXHR));
+    alert( "Oops! The web server didn't like what you said: " + textStatus + ',' + errorThrown + JSON.stringify(jqXHR));
   });
     }
 

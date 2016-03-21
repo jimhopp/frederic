@@ -205,6 +205,31 @@
       var adultmales = $( 'input#adultmales' );
       var adultfemales = $( 'input#adultfemales' );
 
+      var onlyWS = /^\s*$/; 
+      if (onlyWS.test(fname.val())) {
+        console.log('fname is whitespace-only'); 
+        fname.addClass('error');
+        var status = $( '#status' );
+        status.text('First Name is empty, and cannot be');
+        status.removeClass('hidden');
+	return false;
+      }
+      else {
+	fname.removeClass('error');
+      }
+
+      if (onlyWS.test(lname.val())) {
+        console.log('lname is whitespace-only'); 
+        lname.addClass('error');
+        var status = $( '#status' );
+        status.text('Last Name is empty, and cannot be');
+        status.removeClass('hidden');
+	return false;
+      }
+      else {
+	lname.removeClass('error');
+      }
+
       var client = {Firstname: fname.val(), Lastname: lname.val(), 
         Address: address.val(), CrossStreet: xstreet.val(), Apt: apt.val(),
         DOB: dob.val(), PhoneNum: phnum.val(), Altphonenum: aphnum.val(),
@@ -298,7 +323,7 @@
     if (isAdd()) {$( 'input#submit' ).addClass('hidden');}
   })
   .fail(function( jqXHR, textStatus, errorThrown ) {
-    alert( "failure: " + textStatus + ',' + errorThrown + JSON.stringify(jqXHR));
+    alert( "Oops! The server didn't like what you said: " + textStatus + ',' + errorThrown + JSON.stringify(jqXHR));
   });
     }
 

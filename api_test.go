@@ -84,6 +84,69 @@ func TestAddClient(t *testing.T) {
 	}
 }
 
+func TestAddClientNamesEmpty(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	type reqresp struct {
+		data     io.Reader
+		expected []byte
+	}
+
+	missing := []reqresp{
+		{strings.NewReader(`{"Firstname": "", "Lastname": "","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"unknown","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`Firstname is empty and cannot be`)},
+		{strings.NewReader(`{"Firstname": "Hello", "Lastname": "","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"unknown","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`Lastname is empty and cannot be`)},
+		{strings.NewReader(`{"Firstname": "Hello", "Lastname": "        ","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"unknown","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`Lastname is empty and cannot be`)},
+		{strings.NewReader(`{"Firstname": "     ", "Lastname": "xxx","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"unknown","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`Firstname is empty and cannot be`)},
+	}
+
+	for i, x := range missing {
+		req, err := inst.NewRequest("PUT", "/api/client", x.data)
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header = map[string][]string{
+			"Content-Type": {"application/json"},
+		}
+
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+		addTestUser(c, "test@example.org", true)
+
+		addclient(c, w, req)
+
+		code := w.Code
+		if code != http.StatusBadRequest {
+			t.Errorf("req %v: got code %v, want %v", i, code, http.StatusBadRequest)
+		}
+		body := w.Body.Bytes()
+		if !bytes.Contains(body, x.expected) {
+			t.Errorf("req %v: got body %v (%v), want %v (%v)", i, body, string(body),
+				x.expected, string(x.expected))
+		}
+
+		q := datastore.NewQuery("SVDPClient")
+		clients := make([]client, 0, 10)
+		keys, err := q.GetAll(c, &clients)
+		if err != nil {
+			t.Fatalf("error on GetAll: %v", err)
+			return
+		}
+		if len(keys) != 0 {
+			t.Errorf("req %v: got %v records in query, expected %v", i, len(keys), 0)
+		}
+	}
+}
+
 func TestGetAllClients(t *testing.T) {
 	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {
@@ -596,6 +659,66 @@ func TestAddVisit(t *testing.T) {
 	}
 }
 
+func TestAddVisitMissingData(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	id, err := addclienttodb(newclient, inst)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	type reqresp struct {
+		data     io.Reader
+		expected []byte
+	}
+
+	missing := []reqresp{
+		{strings.NewReader(`{"Vincentians": "Michael, Mary Margaret", "VisitDate": "", "Giftcardamt": "100", "Numfoodboxes": "2"}`),
+			[]byte(`Visitdate is empty and cannot be`)},
+		{strings.NewReader(`{"Vincentians": "Michael, Mary Margaret", "VisitDate": "      ", "Giftcardamt": "100", "Numfoodboxes": "2"}`),
+			[]byte(`Visitdate is empty and cannot be`)},
+		{strings.NewReader(`{"Vincentians": "", "VisitDate": "2013-05-03", "Giftcardamt": "100", "Numfoodboxes": "2"}`),
+			[]byte(`Vincentians is empty and cannot be`)},
+		{strings.NewReader(`{"Vincentians": "       ", "VisitDate": "2013-05-03", "Giftcardamt": "100", "Numfoodboxes": "2"}`),
+			[]byte(`Vincentians is empty and cannot be`)},
+	}
+
+	for i, x := range missing {
+		req, err := inst.NewRequest("PUT", "/api/visit/"+
+			strconv.FormatInt(id, 10), x.data)
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header = map[string][]string{
+			"Content-Type": {"application/json"},
+		}
+
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+		addTestUser(c, "test@example.org", true)
+
+		visitrouter(c, w, req)
+
+		code := w.Code
+		if code != http.StatusBadRequest {
+			t.Errorf("req %v: got code %v, want %v", i, code, http.StatusBadRequest)
+		}
+		body := w.Body.Bytes()
+
+		if !bytes.Contains(body, x.expected) {
+			t.Errorf("req %v: got %v and expected %v", i, string(body), string(x.expected))
+		}
+	}
+}
+
 func TestEditVisit(t *testing.T) {
 	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {
@@ -747,6 +870,125 @@ func TestEditVisit(t *testing.T) {
 		}
 	}
 }
+
+func TestEditVisitMissingData(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	cltid, err := addclienttodb(newclient, inst)
+	log.Printf("TestEditVisit: got %v from addclienttodb\n", cltid)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	visits := []visit{
+		{Vincentians: "Irene, Jim",
+			Visitdate: "2013-05-03"},
+	}
+
+	vstids := make([]int64, 2)
+
+	for i, v := range visits {
+		data, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("Failed to marshal %v", v)
+		}
+		req, err := inst.NewRequest("PUT", "/api/visit/"+
+			strconv.FormatInt(cltid, 10), bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header = map[string][]string{
+			"Content-Type": {"application/json"},
+		}
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+		addTestUser(c, "test@example.org", true)
+
+		visitrouter(c, w, req)
+
+		code := w.Code
+		if code != http.StatusOK {
+			t.Errorf("got code %v, want %v", code, http.StatusOK)
+		}
+
+		body := w.Body.Bytes()
+		newrec := &visitrec{}
+		err = json.Unmarshal(body, newrec)
+		if err != nil {
+			t.Errorf("unable to parse %v: %v", string(body), err)
+		}
+		vstids[i] = newrec.Id
+	}
+
+	visits[0].Comment = "id is " + strconv.FormatInt(vstids[0], 10)
+	visits[0].Visitdate = ""
+	for i, v := range visits {
+		data, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("Failed to marshal %v", v)
+		}
+		req, err := inst.NewRequest("PUT", "/api/visit/"+
+			strconv.FormatInt(cltid, 10)+
+			"/"+strconv.FormatInt(vstids[i], 10)+"/edit", bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header = map[string][]string{
+			"Content-Type": {"application/json"},
+		}
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+
+		visitrouter(c, w, req)
+
+		code := w.Code
+		if code != http.StatusBadRequest {
+			t.Errorf("got code %v, want %v", code, http.StatusBadRequest)
+		}
+
+		body := w.Body.Bytes()
+		expected := []byte("Visitdate is empty and cannot be")
+		if !bytes.Contains(body, expected) {
+			t.Errorf("got %v, expected %v", string(body), string(expected))
+		}
+	}
+
+	req, err := inst.NewRequest("GET", "/api/visit/"+
+		strconv.FormatInt(cltid, 10), nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w := httptest.NewRecorder()
+
+	c := appengine.NewContext(req)
+	getallvisits(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	body := w.Body.Bytes()
+	createdvisitrecs := []visitrec{}
+	err = json.Unmarshal(body, &createdvisitrecs)
+	if err != nil {
+		t.Errorf("error unmarshaling response to getvisits %v\n", err)
+	}
+	if createdvisitrecs[0].Visit.Visitdate != "2013-05-03" {
+		t.Errorf("Visitdate is %v but wanted %v", createdvisitrecs[0].Visit.Visitdate, "2013-05-03")
+	}
+}
+
 func TestUpdateInvalidData(t *testing.T) {
 	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {
@@ -783,6 +1025,61 @@ func TestUpdateInvalidData(t *testing.T) {
 	code := w.Code
 	if code != http.StatusBadRequest {
 		t.Errorf("got code %v, want %v", code, http.StatusBadRequest)
+	}
+}
+
+func TestUpdateMissingData(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	id, err := addclienttodb(newclient, inst)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	type reqresp struct {
+		data     io.Reader
+		expected []byte
+	}
+
+	missing := []reqresp{
+		{strings.NewReader(`{"Firstname": "", "Lastname": "Ozanam"}`),
+			[]byte("Firstname is empty and cannot be")},
+		{strings.NewReader(`{"Firstname": "Frederic", "Lastname": ""}`),
+			[]byte("Lastname is empty and cannot be")},
+	}
+	for i, x := range missing {
+		req, err := inst.NewRequest("PUT", "/client/"+strconv.FormatInt(id,
+			10), x.data)
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header = map[string][]string{
+			"Content-Type": {"application/json"},
+		}
+
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+		addTestUser(c, "test@example.org", true)
+
+		editclient(c, w, req)
+
+		code := w.Code
+		if code != http.StatusBadRequest {
+			t.Errorf("req %v: got code %v, want %v", i, code, http.StatusBadRequest)
+		}
+		body := w.Body.Bytes()
+		if !bytes.Contains(body, x.expected) {
+			t.Errorf("req %v: got body %v (%v), expected %v (%v)", i, body, string(body),
+				x.expected, string(x.expected))
+		}
 	}
 }
 
@@ -1311,6 +1608,18 @@ func TestGetUsers(t *testing.T) {
 }
 
 func addTestUser(c appengine.Context, u string, admin bool) (*datastore.Key, error) {
+	q := datastore.NewQuery("SVDPUser").KeysOnly().Filter("Email =", u).Filter("IsAdmin =", admin)
+	keys, err := q.GetAll(c, nil)
+	if err != nil {
+		c.Errorf("Failed to query for users: %v", err)
+		return nil, err
+	}
+
+	if len(keys) > 0 {
+		c.Infof("user %v/%v already in datastore", u, admin)
+		return keys[0], nil
+	}
+
 	newuser := &appuser{Email: u, IsAdmin: admin}
 
 	id, err := datastore.Put(c, datastore.NewIncompleteKey(c, "SVDPUser",

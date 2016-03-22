@@ -709,11 +709,15 @@ func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.R
 		U, LogoutUrl string
 		Visits       []visitrec
 		Cltmap       map[int64]string
+		Start        string
+		End          string
 	}{
 		u.Email,
 		l,
 		visitrecs,
 		cltmap,
+	        start,
+	        end,
 	}
 	err = templates.ExecuteTemplate(w, "visits.html", data)
 	if err != nil {

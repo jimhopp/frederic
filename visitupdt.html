@@ -13,10 +13,10 @@
    <form>
      <table class="contained">
      <tr>
-     <td>Vincentians:</td><td><input type="text" id="vincentians" value="{{ .Visit.Vincentians }}" name="Vincentians"></td>
+     <td>Vincentians*:</td><td><input type="text" id="vincentians" value="{{ .Visit.Vincentians }}" name="Vincentians"></td>
      </tr>
      <tr>
-      <td>Visit Date:<span class="invisible" id="datefmt">(yyyy-mm-dd)</span></td><td><input type="date" id="visitdate" value="{{ .Visit.Visitdate }}" name="visitdate">
+      <td>Visit Date*:<span class="invisible" id="datefmt">(yyyy-mm-dd)</span></td><td><input type="date" id="visitdate" value="{{ .Visit.Visitdate }}" name="visitdate">
           <a href="javascript:visitedtoday();">(Today)</a>     
      </td>
      </tr>

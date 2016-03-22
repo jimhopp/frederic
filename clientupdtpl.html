@@ -2,8 +2,8 @@
       <form>
       <div class="box">
       <h4>Client</h4>
-        <label class="contained">First Name:<input type="text" id="fname" value="{{ .Clientrec.Clt.Firstname }}" name="FirstName"></label>
-        <label>Last Name:<input type="text" id="lname" value="{{ .Clientrec.Clt.Lastname }}" name="LastName"></label>
+        <label class="contained">First Name*:<input type="text" id="fname" value="{{ .Clientrec.Clt.Firstname }}" name="FirstName"></label>
+        <label>Last Name*:<input type="text" id="lname" value="{{ .Clientrec.Clt.Lastname }}" name="LastName"></label>
         <label>DOB:<span class="invisible" id="datefmt">(yyyy-mm-dd)</span><input type="date" id="dob" value="{{ .Clientrec.Clt.DOB }}" name="dob"></label>
 	<br>
         <label class="contained">Address:<input type="text" size="40" id="address" value="{{ .Clientrec.Clt.Address }}" name="Address"></label>

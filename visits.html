@@ -12,6 +12,9 @@
     </form>
     {{ if gt .Start "" }}
     <h4 class="contained">Visits between {{ .Start }} and {{ .End }}</h4>
+    <a class="contained" href="/visits?startdate={{ .Start }}&enddate={{ .End }}&csv=true">Download</a>
+    <br>
+    <br>
     {{ end }}
     <table class="contained">
       <thead>

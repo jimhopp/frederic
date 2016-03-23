@@ -145,6 +145,7 @@ var funcMap = template.FuncMap{"age": age,
 	"famSize": famSize,
 }
 var templates = template.Must(template.New("client").Funcs(funcMap).ParseGlob("*.html"))
+var txttemplates = template.Must(template.New("csv").Funcs(funcMap).ParseGlob("*.csv"))
 
 func age(dobs string) string {
 	if len(dobs) == 0 {
@@ -670,7 +671,8 @@ func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.R
 
 	start := r.FormValue("startdate")
 	end := r.FormValue("enddate")
-	c.Infof("looking for visits between %v and %v", start, end)
+	csv := r.FormValue("csv")
+	c.Infof("looking for visits between %v and %v; csv=%v", start, end, csv)
 
 	u := user.Current(c)
 
@@ -699,6 +701,8 @@ func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.R
 		if err != nil {
 			c.Warningf("unable to retrieve client with key %v for visit with key %v",
 				cltkey.String(), keys[i].String())
+		} else if csv == "true" {
+			cltmap[visitrecs[i].ClientId] = clt.Firstname + " " + clt.Lastname
 		} else {
 			cltmap[visitrecs[i].ClientId] = clt.Lastname + ", " + clt.Firstname
 		}
@@ -716,11 +720,19 @@ func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.R
 		l,
 		visitrecs,
 		cltmap,
-	        start,
-	        end,
+		start,
+		end,
 	}
-	err = templates.ExecuteTemplate(w, "visits.html", data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if csv == "true" {
+		w.Header().Set("Content-Type", "text/csv")
+		err = txttemplates.ExecuteTemplate(w, "visits.csv", data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	} else {
+		err = templates.ExecuteTemplate(w, "visits.html", data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }

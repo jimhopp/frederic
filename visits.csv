@@ -1,0 +1,5 @@
+Start Date,End Date
+{{ .Start }},{{ .End }}
+"Client","Visit Date","Vincentians","Assistance Requested","Gift Card","Num. Food Boxes","Rent","Utilities","Water Bill","Other assistance Type","Other assistance Amt","Clothing Vouchers","Furniture Vouchers","Other Vouchers","Comment"
+{{ range $i, $vst := .Visits }}"{{ index $.Cltmap .ClientId }}","{{ .Visit.Visitdate }}","{{ .Visit.Vincentians }}","{{ .Visit.Assistancerequested }}","{{ .Visit.Giftcardamt }}","{{ .Visit.Numfoodboxes }}","{{ .Visit.Rentassistance }}","{{ .Visit.Utilitiesassistance }}","{{ .Visit.Waterbillassistance }}","{{ .Visit.Otherassistancetype }}","{{ .Visit.Otherassistanceamt }}","{{ .Visit.Vouchersclothing }}","{{ .Visit.Vouchersfurniture }}","{{ .Visit.Vouchersother }}","{{ .Visit.Comment }}"
+{{ end }}

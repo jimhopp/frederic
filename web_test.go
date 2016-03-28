@@ -975,7 +975,7 @@ func TestDownloadVisitsInRange(t *testing.T) {
 			{Vincentians: "Eileen, Lynn",
 				Visitdate:           "2013-04-03",
 				Assistancerequested: "test3"},
-			{Vincentians: "Stu and Anne",
+			{Vincentians: "Stu & Anne",
 				Visitdate:           "2013-03-03",
 				Assistancerequested: "test4"},
 		},

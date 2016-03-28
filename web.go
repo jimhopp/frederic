@@ -145,7 +145,6 @@ var funcMap = template.FuncMap{"age": age,
 	"famSize": famSize,
 }
 var templates = template.Must(template.New("client").Funcs(funcMap).ParseGlob("*.html"))
-var txttemplates = template.Must(template.New("csv").Funcs(funcMap).ParseGlob("*.csv"))
 
 func age(dobs string) string {
 	if len(dobs) == 0 {

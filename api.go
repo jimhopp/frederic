@@ -14,6 +14,16 @@ import (
 	"appengine/user"
 )
 
+var ethnicities = map[string]bool{
+	"UNK": true,
+	"W":   true,
+	"B":   true,
+	"A":   true,
+	"PI":  true,
+	"H":   true,
+	"O":   true,
+}
+
 type useredit struct {
 	Ids        []int64
 	Aus        []appuser
@@ -49,6 +59,15 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err = checkClientRequired(clt); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if clt.Ethnicity == "" {
+		clt.Ethnicity = "UNK"
+	}
+
+	if err = checkClientValues(clt); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -100,6 +119,15 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = checkClientRequired(clt); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if clt.Ethnicity == "" {
+		clt.Ethnicity = "UNK"
+	}
+
+	if err = checkClientValues(clt); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -178,6 +206,18 @@ func checkClientRequired(clt *client) error {
 		return errors.New("Lastname is empty and cannot be")
 	}
 	return nil
+}
+
+func checkClientValues(clt *client) error {
+
+	if ethnicities[clt.Ethnicity] {
+		return nil
+	}
+	var valid []byte
+	for k, _ := range ethnicities {
+		valid = append(valid, (k + ",")...)
+	}
+	return errors.New("Ethnicity must be one of " + string(valid))
 }
 
 func checkVisitRequired(vst *visit) error {

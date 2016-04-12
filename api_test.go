@@ -28,7 +28,7 @@ func TestAddClient(t *testing.T) {
 	}
 	defer inst.Close()
 
-	data := strings.NewReader(`{"Firstname": "frederic", "Lastname": "ozanam","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"unknown","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`)
+	data := strings.NewReader(`{"Firstname": "frederic", "Lastname": "ozanam","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`)
 	req, err := inst.NewRequest("PUT", "/api/client", data)
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
@@ -50,7 +50,7 @@ func TestAddClient(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body := w.Body.Bytes()
-	expected := []byte(`{"Firstname":"frederic","Lastname":"ozanam","Address":"123 Easy St","Apt":"9","CrossStreet":"Main","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"unknown","ReferredBy":"districtofc","Notes":"landlord blahblahblah","Adultmales":"","Adultfemales":"","Fammbrs":null,"Financials":{"FatherIncome":"","MotherIncome":"","AFDCIncome":"","GAIncome":"","SSIIncome":"","UnemploymentInsIncome":"","SocialSecurityIncome":"","AlimonyIncome":"","ChildSupportIncome":"","Other1Income":"","Other1IncomeType":"","Other2Income":"","Other2IncomeType":"","Other3Income":"","Other3IncomeType":"","RentExpense":"","Section8Voucher":false,"UtilitiesExpense":"","WaterExpense":"","PhoneExpense":"","FoodExpense":"","GasExpense":"","CarPaymentExpense":"","TVInternetExpense":"","GarbageExpense":"","Other1Expense":"","Other1ExpenseType":"","Other2Expense":"","Other2ExpenseType":"","Other3Expense":"","Other3ExpenseType":"","TotalExpense":"","TotalIncome":""}}`)
+	expected := []byte(`{"Firstname":"frederic","Lastname":"ozanam","Address":"123 Easy St","Apt":"9","CrossStreet":"Main","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"UNK","ReferredBy":"districtofc","Notes":"landlord blahblahblah","Adultmales":"","Adultfemales":"","Fammbrs":null,"Financials":{"FatherIncome":"","MotherIncome":"","AFDCIncome":"","GAIncome":"","SSIIncome":"","UnemploymentInsIncome":"","SocialSecurityIncome":"","AlimonyIncome":"","ChildSupportIncome":"","Other1Income":"","Other1IncomeType":"","Other2Income":"","Other2IncomeType":"","Other3Income":"","Other3IncomeType":"","RentExpense":"","Section8Voucher":false,"UtilitiesExpense":"","WaterExpense":"","PhoneExpense":"","FoodExpense":"","GasExpense":"","CarPaymentExpense":"","TVInternetExpense":"","GarbageExpense":"","Other1Expense":"","Other1ExpenseType":"","Other2Expense":"","Other2ExpenseType":"","Other3Expense":"","Other3ExpenseType":"","TotalExpense":"","TotalIncome":""}}`)
 	if !bytes.Contains(body, expected) {
 		t.Errorf("got body %v (%v), want %v", body, string(body),
 			expected)
@@ -97,17 +97,80 @@ func TestAddClientNamesEmpty(t *testing.T) {
 	}
 
 	missing := []reqresp{
-		{strings.NewReader(`{"Firstname": "", "Lastname": "","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"unknown","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+		{strings.NewReader(`{"Firstname": "", "Lastname": "","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"UNK","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
 			[]byte(`Firstname is empty and cannot be`)},
-		{strings.NewReader(`{"Firstname": "Hello", "Lastname": "","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"unknown","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+		{strings.NewReader(`{"Firstname": "Hello", "Lastname": "","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"UNK","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
 			[]byte(`Lastname is empty and cannot be`)},
-		{strings.NewReader(`{"Firstname": "Hello", "Lastname": "        ","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"unknown","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+		{strings.NewReader(`{"Firstname": "Hello", "Lastname": "        ","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"UNK","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
 			[]byte(`Lastname is empty and cannot be`)},
-		{strings.NewReader(`{"Firstname": "     ", "Lastname": "xxx","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"unknown","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+		{strings.NewReader(`{"Firstname": "     ", "Lastname": "xxx","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"UNK","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
 			[]byte(`Firstname is empty and cannot be`)},
 	}
 
 	for i, x := range missing {
+		req, err := inst.NewRequest("PUT", "/api/client", x.data)
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header = map[string][]string{
+			"Content-Type": {"application/json"},
+		}
+
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+		addTestUser(c, "test@example.org", true)
+
+		addclient(c, w, req)
+
+		code := w.Code
+		if code != http.StatusBadRequest {
+			t.Errorf("req %v: got code %v, want %v", i, code, http.StatusBadRequest)
+		}
+		body := w.Body.Bytes()
+		if !bytes.Contains(body, x.expected) {
+			t.Errorf("req %v: got body %v (%v), want %v (%v)", i, body, string(body),
+				x.expected, string(x.expected))
+		}
+
+		q := datastore.NewQuery("SVDPClient")
+		clients := make([]client, 0, 10)
+		keys, err := q.GetAll(c, &clients)
+		if err != nil {
+			t.Fatalf("error on GetAll: %v", err)
+			return
+		}
+		if len(keys) != 0 {
+			t.Errorf("req %v: got %v records in query, expected %v", i, len(keys), 0)
+		}
+	}
+}
+
+func TestAddClientInvalidValue(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	type reqresp struct {
+		data     io.Reader
+		expected []byte
+	}
+
+	invalid := []reqresp{
+		{strings.NewReader(`{"Firstname": "Suzanne", "Lastname": "Test","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"unknown","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`Ethnicity must be one of `)},
+		{strings.NewReader(`{"Firstname": "Hello", "Lastname": "Test","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"caucasian","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`Ethnicity must be one of `)},
+		{strings.NewReader(`{"Firstname": "Hello", "Lastname": "Test","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"hispanic","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`Ethnicity must be one of `)},
+		{strings.NewReader(`{"Firstname": "Suzanne", "Lastname": "xxx","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"other","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`Ethnicity must be one of `)},
+	}
+
+	for i, x := range invalid {
 		req, err := inst.NewRequest("PUT", "/api/client", x.data)
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
@@ -155,9 +218,9 @@ func TestGetAllClients(t *testing.T) {
 	defer inst.Close()
 
 	newclients := []client{
-		{Firstname: "frederic", Lastname: "ozanam"},
-		{Firstname: "John", Lastname: "Doe"},
-		{Firstname: "Jane", Lastname: "Doe"},
+		{Firstname: "frederic", Lastname: "ozanam", Ethnicity: "UNK"},
+		{Firstname: "John", Lastname: "Doe", Ethnicity: "OTH"},
+		{Firstname: "Jane", Lastname: "Doe", Ethnicity: "H"},
 	}
 	id := make([]int64, 3)
 	for i := 0; i < len(newclients); i++ {
@@ -434,14 +497,14 @@ func TestUpdateClient(t *testing.T) {
 	}
 	defer inst.Close()
 
-	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	newclient := client{Firstname: "frederic", Lastname: "ozanam", Ethnicity: "W"}
 	id, err := addclienttodb(newclient, inst)
 	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
 	if err != nil {
 		t.Fatalf("unable to add client: %v", err)
 	}
 
-	data := strings.NewReader(`{"Firstname": "Frederic", "Lastname": "Ozanam"}`)
+	data := strings.NewReader(`{"Firstname": "Frederic", "Lastname": "Ozanam", "Ethnicity": "W"}`)
 	req, err := inst.NewRequest("PUT", "/client/"+
 		strconv.FormatInt(id, 10), data)
 	if err != nil {
@@ -464,7 +527,7 @@ func TestUpdateClient(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body := w.Body.Bytes()
-	expected := []byte(`{"Firstname":"Frederic","Lastname":"Ozanam","Address":"","Apt":"","CrossStreet":"","DOB":"","Phonenum":"","Altphonenum":"","Altphonedesc":"","Ethnicity":"","ReferredBy":"","Notes":"","Adultmales":"","Adultfemales":"","Fammbrs":null,"Financials":{"FatherIncome":"","MotherIncome":"","AFDCIncome":"","GAIncome":"","SSIIncome":"","UnemploymentInsIncome":"","SocialSecurityIncome":"","AlimonyIncome":"","ChildSupportIncome":"","Other1Income":"","Other1IncomeType":"","Other2Income":"","Other2IncomeType":"","Other3Income":"","Other3IncomeType":"","RentExpense":"","Section8Voucher":false,"UtilitiesExpense":"","WaterExpense":"","PhoneExpense":"","FoodExpense":"","GasExpense":"","CarPaymentExpense":"","TVInternetExpense":"","GarbageExpense":"","Other1Expense":"","Other1ExpenseType":"","Other2Expense":"","Other2ExpenseType":"","Other3Expense":"","Other3ExpenseType":"","TotalExpense":"","TotalIncome":""}}`)
+	expected := []byte(`{"Firstname":"Frederic","Lastname":"Ozanam","Address":"","Apt":"","CrossStreet":"","DOB":"","Phonenum":"","Altphonenum":"","Altphonedesc":"","Ethnicity":"W","ReferredBy":"","Notes":"","Adultmales":"","Adultfemales":"","Fammbrs":null,"Financials":{"FatherIncome":"","MotherIncome":"","AFDCIncome":"","GAIncome":"","SSIIncome":"","UnemploymentInsIncome":"","SocialSecurityIncome":"","AlimonyIncome":"","ChildSupportIncome":"","Other1Income":"","Other1IncomeType":"","Other2Income":"","Other2IncomeType":"","Other3Income":"","Other3IncomeType":"","RentExpense":"","Section8Voucher":false,"UtilitiesExpense":"","WaterExpense":"","PhoneExpense":"","FoodExpense":"","GasExpense":"","CarPaymentExpense":"","TVInternetExpense":"","GarbageExpense":"","Other1Expense":"","Other1ExpenseType":"","Other2Expense":"","Other2ExpenseType":"","Other3Expense":"","Other3ExpenseType":"","TotalExpense":"","TotalIncome":""}}`)
 	if !bytes.Contains(body, expected) {
 		t.Errorf("got body %v (%v), want %v (%v)", body, string(body),
 			expected, string(expected))
@@ -479,6 +542,7 @@ func TestUpdateClient(t *testing.T) {
 	expectedc := &client{}
 	expectedc.Firstname = "Frederic"
 	expectedc.Lastname = "Ozanam"
+	expectedc.Ethnicity = "W"
 	if !reflect.DeepEqual(&clt, expectedc) {
 		t.Errorf("db record shows %v, want %v", clt, expectedc)
 	}
@@ -1003,28 +1067,43 @@ func TestUpdateInvalidData(t *testing.T) {
 		t.Fatalf("unable to add client: %v", err)
 	}
 
-	data := strings.NewReader(`{"Firstname": "Frederic", "Lastname": 
-		"Ozanam", "DOB":"alphabet"}`)
-	req, err := inst.NewRequest("PUT", "/client/"+strconv.FormatInt(id,
-		10), data)
-	if err != nil {
-		t.Fatalf("Failed to create req: %v", err)
+	type reqresp struct {
+		data     io.Reader
+		expected []byte
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
+	bogus := []reqresp{
+		{strings.NewReader(`{"Firstname": "Frederic", "Lastname": "Ozanam", "DOB":"alphabet"}`),
+			[]byte(`parsing time "alphabet" as "2006-01-02": cannot parse "alphabet" as "2006"`)},
+		{strings.NewReader(`{"Firstname": "Frederic", "Lastname": "Ozanam", "DOB":"1985-01-01", "Ethnicity":"unknown"}`),
+			[]byte("Ethnicity must be one of ")},
 	}
+	for i, x := range bogus {
+		req, err := inst.NewRequest("PUT", "/client/"+strconv.FormatInt(id,
+			10), x.data)
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header = map[string][]string{
+			"Content-Type": {"application/json"},
+		}
 
-	aetest.Login(&user.User{Email: "test@example.org"}, req)
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
 
-	w := httptest.NewRecorder()
-	c := appengine.NewContext(req)
-	addTestUser(c, "test@example.org", true)
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+		addTestUser(c, "test@example.org", true)
 
-	editclient(c, w, req)
+		editclient(c, w, req)
 
-	code := w.Code
-	if code != http.StatusBadRequest {
-		t.Errorf("got code %v, want %v", code, http.StatusBadRequest)
+		code := w.Code
+		if code != http.StatusBadRequest {
+			t.Errorf("test %v: got code %v, want %v", i, code, http.StatusBadRequest)
+		}
+		body := w.Body.Bytes()
+		if !bytes.Contains(body, x.expected) {
+			t.Errorf("req %v: got body %v (%v), expected %v (%v)", i, body, string(body),
+				x.expected, string(x.expected))
+		}
 	}
 }
 

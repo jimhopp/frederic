@@ -26,7 +26,16 @@
         <br>
 	<div class="box">
         <h4>Household</h4>
-        <label class="contained">Ethnicity:<input type="text" id="ethnicity" value="{{ .Clientrec.Clt.Ethnicity }}" name="ethnicity"></label>
+        <label class="contained">Ethnicity:<select id="ethnicity" name="ethnicity">
+            <option value="UNK" {{ if eq "UNK" .Clientrec.Clt.Ethnicity }} selected{{end}}>Unknown</option>
+            <option value="W" {{ if eq "W" .Clientrec.Clt.Ethnicity }} selected{{end}}>Caucasian</option>
+            <option value="B" {{ if eq "B" .Clientrec.Clt.Ethnicity }} selected{{end}}>Black</option>
+            <option value="A" {{ if eq "A" .Clientrec.Clt.Ethnicity }} selected{{end}}>Asian</option>
+            <option value="PI" {{ if eq "PI" .Clientrec.Clt.Ethnicity }} selected{{end}}>Pacific Islander</option>
+            <option value="H" {{ if eq "H" .Clientrec.Clt.Ethnicity }} selected{{end}}>Hispanic or Latino</option>
+            <option value="O" {{ if eq "O" .Clientrec.Clt.Ethnicity }} selected{{end}}>Mixed/Other</option>
+          </select>
+        </label>
         <br>
         <label class="contained">Adults - Males:<input type="text" size="5" id="adultmales" value="{{ .Clientrec.Clt.Adultmales }}" name="adultmales"></label>
         <label>Adults - Females:<input type="text" size="5" id="adultfemales" value="{{ .Clientrec.Clt.Adultfemales }}" name="adultfemales"></label>
@@ -185,7 +194,7 @@
       var phnum = $( 'input#phonenum' );
       var aphnum = $( 'input#altphonenum' );
       var aphdesc = $( 'input#altphonedesc' );
-      var ethnicity = $( 'input#ethnicity' );
+      var ethnicity = $( 'select#ethnicity' );
       var referred = $( 'select#referred' );
       var notes = $( 'textarea#notes' );
       var adultmales = $( 'input#adultmales' );

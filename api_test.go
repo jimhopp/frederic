@@ -219,7 +219,7 @@ func TestGetAllClients(t *testing.T) {
 
 	newclients := []client{
 		{Firstname: "frederic", Lastname: "ozanam", Ethnicity: "UNK"},
-		{Firstname: "John", Lastname: "Doe", Ethnicity: "OTH"},
+		{Firstname: "John", Lastname: "Doe", Ethnicity: "O"},
 		{Firstname: "Jane", Lastname: "Doe", Ethnicity: "H"},
 	}
 	id := make([]int64, 3)

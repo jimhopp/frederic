@@ -3,6 +3,7 @@ package frederic
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"appengine"
 	"appengine/datastore"
@@ -24,9 +25,10 @@ func userauthorized(c appengine.Context, email string) (bool, error) {
 	if v := os.Getenv("BOOTSTRAP_USER"); v != "" && v == email {
 		return true, nil
 	}
-	q := datastore.NewQuery("SVDPUser").Filter("Email=", email)
+	lc := strings.ToLower(email)
+	q := datastore.NewQuery("SVDPUser").Filter("Email=", lc)
 	cnt, err := q.Count(c)
-	c.Debugf("count for user %v = %v", email, cnt)
+	c.Debugf("count for user %v = %v", lc, cnt)
 	if err != nil {
 		return false, err
 	}

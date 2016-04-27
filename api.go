@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"appengine"
@@ -619,7 +620,9 @@ func editusers(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < len(b1.Aus); i++ {
 		keys[i] = datastore.NewKey(c, "SVDPUser", "", b1.Ids[i],
 			nil)
+		b1.Aus[i].Email = strings.ToLower(b1.Aus[i].Email)
 	}
+
 	newkeys, err := datastore.PutMulti(c, keys, b1.Aus)
 	if err != nil {
 		c.Errorf("datastore error on PutMulti: :%v\n", err)
@@ -627,15 +630,15 @@ func editusers(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for i := 0; i < len(newkeys); i++ {
-		b1.Ids[i] = newkeys[i].IntID()
+	for i, k := range newkeys {
+		b1.Ids[i] = k.IntID()
 	}
 
 	if len(b1.DeletedIds) > 0 {
 		deletedkeys := make([]*datastore.Key, len(b1.DeletedIds))
-		for i := 0; i < len(b1.DeletedIds); i++ {
+		for i, k := range b1.DeletedIds {
 			deletedkeys[i] = datastore.NewKey(c, "SVDPUser", "",
-				b1.DeletedIds[i], nil)
+				k, nil)
 		}
 		if err = datastore.DeleteMulti(c, deletedkeys); err != nil {
 			c.Errorf("error deleting users: %v", err)

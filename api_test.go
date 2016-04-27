@@ -1306,6 +1306,16 @@ func TestAuthorization(t *testing.T) {
 	if !auth {
 		t.Errorf("auth failed for frederic@example.org")
 	}
+	addTestUser(c, "rosalie@example.org", true)
+
+	auth, err = userauthorized(c, "ROSALIE@example.org")
+
+	if err != nil {
+		t.Fatalf("auth error: %v", err.Error())
+	}
+	if !auth {
+		t.Errorf("auth failed for ROSALIE@example.org")
+	}
 	auth, err = userauthorized(c, "fred@example.org")
 
 	if err != nil {
@@ -1352,7 +1362,7 @@ func TestAddUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to unmarshal: %v", err)
 	}
-	e := [2]string{"fred1@example.org", "fred2@example.org"}
+	e := []string{"fred1@example.org", "fred2@example.org"}
 	for i := 0; i < len(e); i++ {
 		a, err := userauthorized(c, e[i])
 		if err != nil {
@@ -1408,6 +1418,61 @@ func TestAddUsersMissingIds(t *testing.T) {
 	body := w.Body.Bytes()
 	c.Infof("got response %v", string(body))
 
+}
+
+func TestUsersNotCaseSensitive(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	b1 := useredit{[]int64{0, 0}, []appuser{{Email: `FREDERIC@example.org`}, {Email: `ROSALIE@EXAMPLE.ORG`}}, []int64{}}
+
+	data, err := json.Marshal(&b1)
+	if err != nil {
+		t.Fatalf("unable to marshal: %v", err)
+	}
+	req, err := inst.NewRequest("PUT", "/editusers", bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org", true)
+
+	editusers(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusCreated)
+	}
+	body := w.Body.Bytes()
+	c.Infof("got response %v", string(body))
+
+	var b2 useredit
+	err = json.Unmarshal(body, &b2)
+	if err != nil {
+		t.Fatalf("unable to unmarshal: %v", err)
+	}
+	for _, u1 := range b1.Aus {
+		found := false
+		for _, u2 := range b2.Aus {
+			if u2.Email == strings.ToLower(u1.Email) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("unable to find %v in %v", u1.Email, b2.Aus)
+		}
+	}
 }
 
 func TestEditUsers(t *testing.T) {

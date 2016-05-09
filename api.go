@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -44,6 +45,73 @@ func apiuserOK(c appengine.Context, w http.ResponseWriter) bool {
 	return true
 }
 
+func dumpValues(c appengine.Context, a, b interface{}) {
+	va := reflect.ValueOf(a)
+	if va.Kind() == reflect.Ptr {
+		va = va.Elem()
+	}
+	vb := reflect.ValueOf(b)
+	if vb.Kind() == reflect.Ptr {
+		vb = vb.Elem()
+	}
+	n := va.NumField()
+	t := va.Type()
+
+	for i := 0; i < n; i++ {
+		var fa, fb reflect.Value
+		var ft reflect.StructField
+		fa = va.Field(i)
+		fb = vb.Field(i)
+		ft = t.Field(i)
+
+		if ft.Type.Kind() == reflect.Struct {
+			dumpValues(c, fa.Interface(), fb.Interface())
+		} else if ft.Type.Kind() == reflect.Slice {
+			ma := fa.Len()
+			mb := fb.Len()
+			c.Debugf("slice: a has len %v, b has len %v", ma, mb)
+			//slice items they both have
+			for j := 0; j < ma && j < mb; j++ {
+				vas := fa.Index(j)
+				vbs := fb.Index(j)
+				c.Debugf("%v: %v (%v)", j, vas, vas.Kind())
+				c.Debugf("%v: %v (%v)", j, vbs, vbs.Kind())
+				if vas.Kind() == reflect.Struct {
+					dumpValues(c, vas.Interface(), vbs.Interface())
+				}
+			}
+			//slice items in a but not b
+			for j := mb; j < ma; j++ {
+				c.Debugf("a slice is bigger than b: j=%v", j)
+				vas := fa.Index(j)
+				empty, err := makeEmptyRec(vas.Interface())
+				if err != nil {
+					c.Errorf("dumpValues: got error trying to make empty rec: %v", err)
+					break
+				}
+				if vas.Kind() == reflect.Struct {
+					dumpValues(c, vas.Interface(), empty)
+				}
+			}
+			//slice items in b but not in a
+			for j := ma; j < mb; j++ {
+				c.Debugf("b slice is bigger than a: j=%v", j)
+				vbs := fb.Index(j)
+				empty, err := makeEmptyRec(vbs.Interface())
+				if err != nil {
+					c.Errorf("dumpValues: got error trying to make empty rec: %v", err)
+					break
+				}
+				if vbs.Kind() == reflect.Struct {
+					dumpValues(c, empty, vbs.Interface())
+				}
+			}
+		} else if !reflect.DeepEqual(fa.Interface(), fb.Interface()) {
+			c.Infof("Changed value for %v from %v to %v", ft.Name, fb, fa)
+		}
+	}
+}
+
 func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !apiuserOK(c, w) {
 		return
@@ -73,8 +141,7 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ikey := datastore.NewIncompleteKey(c, "SVDPClient", nil)
-	key, err := datastore.Put(c, ikey, clt)
+	key, err := putRecord(c, "SVDPClient", 0, nil, clt)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -83,7 +150,7 @@ func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	created := new(update)
 	created.User = user.Current(c).String()
 	created.When = time.Now().String()
-	ikey = datastore.NewIncompleteKey(c, "SVDPUpdate", key)
+	ikey := datastore.NewIncompleteKey(c, "SVDPUpdate", key)
 	_, err = datastore.Put(c, ikey, created)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -164,10 +231,10 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	ikey := datastore.NewKey(c, "SVDPClient", "", id, nil)
-	key, err := datastore.Put(c, ikey, clt)
+
+	key, err := putRecord(c, "SVDPClient", id, nil, clt)
 	if err != nil {
-		c.Errorf("datastore error on Put: :%v\n", err)
+		c.Errorf("error on putRecord: :%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -175,7 +242,7 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	latest := new(update)
 	latest.User = user.Current(c).String()
 	latest.When = time.Now().String()
-	ikey = datastore.NewIncompleteKey(c, "SVDPUpdate", key)
+	ikey := datastore.NewIncompleteKey(c, "SVDPUpdate", key)
 	_, err = datastore.Put(c, ikey, latest)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -192,6 +259,57 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	c.Infof("returning %v\n", string(b))
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(b))
+}
+
+func putRecord(c appengine.Context, entity string, id int64, parentKey *datastore.Key, newrec interface{}) (key *datastore.Key, err error) {
+
+	c.Debugf("putRecord: entity %v, id %d, parent %v, newrec %v (%T)", entity, id, parentKey, newrec, newrec)
+	var oldrec interface{}
+
+	oldrec, err = makeEmptyRec(newrec)
+	if err != nil {
+		c.Errorf("error making oldrec: %v", err)
+		return nil, err
+	}
+	c.Debugf("oldrec: %v", oldrec)
+	var ikey *datastore.Key
+	if id == 0 {
+		ikey = datastore.NewIncompleteKey(c, entity, parentKey)
+	} else {
+		ikey = datastore.NewKey(c, entity, "", id, parentKey)
+	}
+	c.Debugf("putRecord: key=%v", ikey)
+
+	if id != 0 {
+		err = datastore.Get(c, ikey, oldrec)
+		if err != nil {
+			c.Errorf("datastore error getting oldrec: :%v\n", err)
+			return nil, err
+		}
+	}
+
+	dumpValues(c, newrec, oldrec)
+	key, err = datastore.Put(c, ikey, newrec)
+	if err != nil {
+		c.Errorf("datastore error on Put: :%v\n", err)
+		return nil, err
+	}
+	return key, nil
+}
+
+func makeEmptyRec(templ interface{}) (oldrec interface{}, err error) {
+
+	switch templ.(type) {
+	case *client:
+		oldrec = &client{}
+	case *visit:
+		oldrec = &visit{}
+	case fammbr:
+		oldrec = &fammbr{}
+	default:
+		return nil, errors.New(fmt.Sprintf("makeEmptyRec: type unrecognized: %T", templ))
+	}
+	return oldrec, nil
 }
 
 func checkClientRequired(clt *client) error {
@@ -321,9 +439,8 @@ func addvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	ikey := datastore.NewIncompleteKey(c, "SVDPClientVisit",
-		datastore.NewKey(c, "SVDPClient", "", id, nil))
-	key, err := datastore.Put(c, ikey, vst)
+
+	key, err := putRecord(c, "SVDPClientVisit", 0, datastore.NewKey(c, "SVDPClient", "", id, nil), vst)
 	if err != nil {
 		c.Errorf("datastore error on Put: :%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -334,7 +451,7 @@ func addvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	created.User = user.Current(c).String()
 	created.When = time.Now().String()
 
-	ikey = datastore.NewIncompleteKey(c, "SVDPUpdate", key)
+	ikey := datastore.NewIncompleteKey(c, "SVDPUpdate", key)
 	_, err = datastore.Put(c, ikey, created)
 	if err != nil {
 		c.Errorf("datastore error on Put: :%v\n", err)
@@ -427,11 +544,9 @@ func editvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ikey := datastore.NewKey(c, "SVDPClientVisit", "", vstid,
-		datastore.NewKey(c, "SVDPClient", "", cltid, nil))
-	key, err := datastore.Put(c, ikey, vst)
+	key, err := putRecord(c, "SVDPClientVisit", vstid, datastore.NewKey(c, "SVDPClient", "", cltid, nil), vst)
 	if err != nil {
-		c.Errorf("datastore error on Put: :%v\n", err)
+		c.Errorf("datastore error on putRecord: :%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -440,7 +555,7 @@ func editvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	latest.User = user.Current(c).String()
 	latest.When = time.Now().String()
 
-	ikey = datastore.NewIncompleteKey(c, "SVDPUpdate", key)
+	ikey := datastore.NewIncompleteKey(c, "SVDPUpdate", key)
 	_, err = datastore.Put(c, ikey, latest)
 	if err != nil {
 		c.Errorf("datastore error on Put: :%v\n", err)
@@ -601,7 +716,7 @@ func editusers(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	_, err = r.Body.Read(body)
 	err = json.Unmarshal(body, &b1)
 	c.Infof("api/editusers: got %v\n", string(body))
-	c.Infof("api/editusers: unmarshaled into %v\n", b1)
+	c.Debugf("api/editusers: unmarshaled into %v\n", b1)
 	if err != nil {
 		c.Errorf("unmarshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

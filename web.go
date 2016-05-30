@@ -8,7 +8,9 @@ import (
 	"html/template"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"appengine"
@@ -128,6 +130,7 @@ func init() {
 	http.Handle("/recordvisit/", ContextHandler{recordvisitpage})
 	http.Handle("/editvisit/", ContextHandler{editvisitpage})
 	http.Handle("/visits", ContextHandler{listvisitsinrangepage})
+	http.Handle("/visitsbyclient", ContextHandler{listvisitsinrangebyclientpage})
 	http.Handle("/users", ContextHandler{edituserspage})
 	http.Handle("/api/client", ContextHandler{addclient})
 	http.Handle("/api/client/", ContextHandler{editclient})
@@ -143,6 +146,7 @@ var funcMap = template.FuncMap{"age": age,
 	"girls":   numGirls,
 	"boys":    numBoys,
 	"famSize": famSize,
+	"add":     add,
 }
 var templates = template.Must(template.New("client").Funcs(funcMap).ParseGlob("*.html"))
 
@@ -197,6 +201,10 @@ func famSize(clt client) (num int, err error) {
 	return men + women + len(clt.Fammbrs), nil
 }
 
+func add(a, b int) int {
+	return a + b
+}
+
 func webuserOK(c appengine.Context, w http.ResponseWriter, r *http.Request) bool {
 	if !userauthenticated(c) {
 		url, err := user.LoginURL(c, r.URL.String())
@@ -246,6 +254,24 @@ func homepage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type clientreclist []clientrec
+
+func (c clientreclist) Len() int {
+	return len(c)
+}
+
+func (c clientreclist) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+func (c clientreclist) Less(i, j int) bool {
+	if strings.ToLower(c[i].Clt.Lastname) != strings.ToLower(c[j].Clt.Lastname) {
+		return strings.ToLower(c[i].Clt.Lastname) < strings.ToLower(c[j].Clt.Lastname)
+	} else {
+		return strings.ToLower(c[i].Clt.Firstname) < strings.ToLower(c[j].Clt.Firstname)
+	}
+}
+
 func listclientspage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !webuserOK(c, w, r) {
 		return
@@ -253,7 +279,7 @@ func listclientspage(c appengine.Context, w http.ResponseWriter, r *http.Request
 
 	u := user.Current(c)
 
-	q := datastore.NewQuery("SVDPClient").Order("Lastname").Order("Firstname")
+	q := datastore.NewQuery("SVDPClient")
 	var clients []client
 	keys, err := q.GetAll(c, &clients)
 	if err != nil {
@@ -261,12 +287,14 @@ func listclientspage(c appengine.Context, w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	clientrecs := make([]clientrec, len(keys))
+	clientrecs := make(clientreclist, len(keys))
 	for i := 0; i < len(clients); i++ {
 		clientrecs[i].Clt = clients[i]
 		clientrecs[i].Id = keys[i].IntID()
 	}
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
+
+	sort.Sort(clientrecs)
 
 	data := struct {
 		U, LogoutUrl string
@@ -700,11 +728,8 @@ func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.R
 		if err != nil {
 			c.Warningf("unable to retrieve client with key %v for visit with key %v",
 				cltkey.String(), keys[i].String())
-		} else if csv == "true" {
-			cltmap[visitrecs[i].ClientId] = clt.Firstname + " " + clt.Lastname
-		} else {
-			cltmap[visitrecs[i].ClientId] = clt.Lastname + ", " + clt.Firstname
 		}
+		cltmap[visitrecs[i].ClientId] = clt.Lastname + ", " + clt.Firstname
 	}
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
 
@@ -730,6 +755,130 @@ func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.R
 		}
 	} else {
 		err = templates.ExecuteTemplate(w, "visits.html", data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+}
+
+type visitlist []visit
+
+func (v visitlist) Len() int {
+	return len(v)
+}
+
+func (v visitlist) Swap(i, j int) {
+	v[i], v[j] = v[j], v[i]
+}
+
+func (v visitlist) Less(i, j int) bool {
+	return v[i].Visitdate < v[j].Visitdate
+}
+
+type vstsbyclt struct {
+	ClientId int64
+	Name     string
+	Visits   visitlist
+}
+
+type cltvsts []vstsbyclt
+
+func (c cltvsts) Len() int {
+	return len(c)
+}
+
+func (c cltvsts) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+func (c cltvsts) Less(i, j int) bool {
+	return strings.ToLower(c[i].Name) < strings.ToLower(c[j].Name)
+}
+
+func listvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	if !webuserOK(c, w, r) {
+		return
+	}
+
+	start := r.FormValue("startdate")
+	end := r.FormValue("enddate")
+	csv := r.FormValue("csv")
+	c.Infof("looking for visits between %v and %v; csv=%v", start, end, csv)
+
+	u := user.Current(c)
+
+	q := datastore.NewQuery("SVDPClientVisit").
+		Filter("Visitdate <=", end).
+		Filter("Visitdate >=", start)
+	var visits []visit
+	keys, err := q.GetAll(c, &visits)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	cltmap := map[int64]*vstsbyclt{}
+
+	c.Infof("got ids %v", keys)
+	visitrecs := make([]visitrec, len(keys))
+	for i, vst := range visits {
+		visitrecs[i].Visit = vst
+		visitrecs[i].Id = keys[i].IntID()
+		cltkey := keys[i].Parent()
+		visitrecs[i].ClientId = cltkey.IntID()
+		var clt client
+		err = datastore.Get(c, cltkey, &clt)
+		if err != nil {
+			c.Warningf("unable to retrieve client with key %v for visit with key %v",
+				cltkey.String(), keys[i].String())
+		}
+
+		var rec *vstsbyclt
+		rec, ok := cltmap[visitrecs[i].ClientId]
+		c.Debugf("rec=%p/%v, ok=%v, cltmap=%v", rec, rec, ok, cltmap)
+		if !ok {
+			rec = new(vstsbyclt)
+			rec.ClientId = visitrecs[i].ClientId
+			rec.Name = clt.Lastname + ", " + clt.Firstname
+			cltmap[visitrecs[i].ClientId] = rec
+		}
+		rec.Visits = append(rec.Visits, vst)
+		c.Debugf("rec=%v, cltmap=%v", rec, cltmap)
+	}
+
+	c.Debugf("cltmao=%v", cltmap)
+	var cv cltvsts
+	for _, clt := range cltmap {
+		sort.Sort(clt.Visits)
+		cv = append(cv, *clt)
+		c.Debugf("appended to cltmap")
+	}
+	c.Debugf("unsorted: cv=%v", cv)
+	sort.Sort(cv)
+	c.Debugf("sorted: cv=%v", cv)
+
+	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
+
+	data := struct {
+		U, LogoutUrl string
+		CV           cltvsts
+		Start        string
+		End          string
+	}{
+		u.Email,
+		l,
+		cv,
+		start,
+		end,
+	}
+	if csv == "true" {
+		w.Header().Set("Content-Type", "text/csv")
+		err = txttemplates.ExecuteTemplate(w, "visitsbyclient.csv", data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	} else {
+		err = templates.ExecuteTemplate(w, "visitsbyclient.html", data)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}

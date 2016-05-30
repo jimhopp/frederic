@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+  <title>St. Vincent de Paul (St. Charles Borromeo Conference) Visits by Client</title>
+  {{ template "scripts" }}
+  <script type="text/javascript" src="/js/json.js"></script>
+  <body class="main">
+   {{ template "header" . }}
+    <form action="/visitsbyclient" method="GET">
+     <label>start date: <span class="invisible" id="sdatefmt">(yyyy-mm-dd)</span></label><input type="date" id="startdate" value="{{ .Start }}" name="startdate"/>
+     <label>end date: <span class="invisible" id="edatefmt">(yyyy-mm-dd)</span></label><input type="date" id="enddate" value="{{ .End }}" name="enddate"/>
+      <input type="submit">
+    </form>
+    {{ if gt .Start "" }}
+    <h4 class="contained">Visits between {{ .Start }} and {{ .End }}</h4>
+    <a class="contained" href="/visitsbyclient?startdate={{ .Start }}&enddate={{ .End }}&csv=true">Download</a>
+    <br>
+    <br>
+    {{ end }}
+    <table class="contained">
+      <thead>
+        <tr>
+	<th class="bordered">Client</th>
+	<th class="bordered">Visit Date</th>
+	<th class="bordered">Vincentians</th>
+	<th class="bordered">Assistance Requested</th>
+	<th class="bordered">Gift Card</th>
+	<th class="bordered">Num. Food Boxes</th>
+	<th class="bordered">Rent</th>
+	<th class="bordered">Utilities</th>
+	<th class="bordered">Water Bill</th>
+	<th class="bordered">Other assistance Type</th>
+	<th class="bordered">Other assistance Amt</th>
+	<th class="bordered">Clothing Vouchers</th>
+	<th class="bordered">Furniture Vouchers</th>
+	<th class="bordered">Other Vouchers</th>
+	<th class="bordered">Comment</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{ range $i, $clt := .CV }}
+        <tr>
+		<td class="bordered" rowspan="{{ add (len .Visits) 1 }}"><a href="/client/{{ .ClientId }}">{{ .Name }}</a></td>
+        </tr>
+	{{ range $j, $vst := .Visits }}
+	  <tr>
+            <td class="bordered">{{ .Visitdate }}</td>
+            <td class="bordered">{{ .Vincentians }}</td>
+            <td class="bordered">{{ .Assistancerequested }}</td>
+            <td class="bordered number">{{ .Giftcardamt }}</td>
+            <td class="bordered number">{{ .Numfoodboxes }}</td>
+            <td class="bordered number">{{ .Rentassistance }}</td>
+            <td class="bordered number">{{ .Utilitiesassistance }}</td>
+            <td class="bordered number">{{ .Waterbillassistance }}</td>
+            <td class="bordered">{{ .Otherassistancetype }}</td>
+            <td class="bordered number">{{ .Otherassistanceamt }}</td>
+            <td class="bordered number">{{ .Vouchersclothing }}</td>
+            <td class="bordered number">{{ .Vouchersfurniture }}</td>
+            <td class="bordered number">{{ .Vouchersother }}</td>
+            <td class="bordered">{{ .Comment }}</td>
+	  </tr>
+	{{ end }}
+      {{ end }}
+      </tbody>
+    </table>
+  <script>
+   $( document ).ready(function() {
+    console.log( 'ready!' );
+
+    if (!browserSupportsDateInput()) {
+      console.log("trying to un-hide datefmt hints");
+      $(' span#sdatefmt ').removeClass("invisible");
+      $(' span#edatefmt ').removeClass("invisible");
+    }
+    });
+    function visitedtoday() {
+        today = new Date();
+        day = today.getDate();
+        if (day < 10) { day = "0" + day;}
+        month = parseFloat(today.getMonth() + 1);
+        if (month < 10) { month = "0" + month;}
+
+	$(' input#visitdate' ).val(today.getFullYear() + '-' + month + '-' + day);
+    }
+  </script>
+  </body>
+</html>

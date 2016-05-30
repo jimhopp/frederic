@@ -1,5 +1,5 @@
 application: frederic-svdp
-version: 11
+version: 12
 runtime: go
 api_version: go1
 

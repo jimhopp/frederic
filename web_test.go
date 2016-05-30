@@ -89,13 +89,13 @@ func TestListClientsPage(t *testing.T) {
 		{Firstname: "John", Lastname: "Doe"},
 		{Firstname: "Jane", Lastname: "Doe"},
 	}
-	ids := make([]int64, len(newclients))
+	ids := make(map[string]int64, len(newclients))
 	for i := 0; i < len(newclients); i++ {
 		id, err := addclienttodb(newclients[i], inst)
 		if err != nil {
 			t.Fatalf("unable to add client: %v", err)
 		}
-		ids[i] = id
+		ids[newclients[i].Lastname+`,`+newclients[i].Firstname] = id
 	}
 	req, err := inst.NewRequest("GET", "/listclients", nil)
 	if err != nil {
@@ -117,11 +117,11 @@ func TestListClientsPage(t *testing.T) {
 
 	body := w.Body.Bytes()
 	rows := []string{"<td>Clients</td>",
-		"<a href=\"/client/" + strconv.FormatInt(ids[0], 10) +
+		"<a href=\"/client/" + strconv.FormatInt(ids["ozanam,frederic"], 10) +
 			"\">ozanam, frederic</a>",
-		"<a href=\"/client/" + strconv.FormatInt(ids[1], 10) +
+		"<a href=\"/client/" + strconv.FormatInt(ids["Doe,John"], 10) +
 			"\">Doe, John</a>",
-		"<a href=\"/client/" + strconv.FormatInt(ids[2], 10) +
+		"<a href=\"/client/" + strconv.FormatInt(ids["Doe,Jane"], 10) +
 			"\">Doe, Jane</a>",
 	}
 	for i := 0; i < len(rows); i++ {
@@ -139,17 +139,15 @@ func TestListClientsPageIsSorted(t *testing.T) {
 	defer inst.Close()
 
 	newclients := []client{
-		{Firstname: "frederic", Lastname: "ozanam"},
+		{Firstname: "Frederic", Lastname: "Ozanam"},
 		{Firstname: "John", Lastname: "Doe"},
-		{Firstname: "Jane", Lastname: "Doe"},
+		{Firstname: "jane", Lastname: "doe"},
 	}
-	ids := make([]int64, 3)
 	for i := 0; i < len(newclients); i++ {
-		id, err := addclienttodb(newclients[i], inst)
+		_, err := addclienttodb(newclients[i], inst)
 		if err != nil {
 			t.Fatalf("unable to add client: %v", err)
 		}
-		ids[i] = id
 	}
 	req, err := inst.NewRequest("GET", "/listclients", nil)
 	if err != nil {
@@ -170,7 +168,7 @@ func TestListClientsPageIsSorted(t *testing.T) {
 	}
 
 	body := w.Body.Bytes()
-	m, err := regexp.Match(`(?s).*Doe.*Doe.*ozanam.*`, body)
+	m, err := regexp.Match(`(?s).*doe.*jane.*Doe.*John.*Ozanam.*Frederic`, body)
 
 	if err != nil {
 		t.Errorf("got error on regexp match: %v", err)
@@ -1046,7 +1044,7 @@ func TestDownloadVisitsInRange(t *testing.T) {
 				t.Errorf("unable to find %v in %v",
 					vst, string(body))
 			}
-			clientName := []byte(`"` + newclients[i].Firstname + ` ` + newclients[i].Lastname + `"`)
+			clientName := []byte(`"` + newclients[i].Lastname + `, ` + newclients[i].Firstname + `"`)
 			if !bytes.Contains(body, clientName) {
 				t.Errorf("CSV unable to find %v in %v", string(clientName), string(body))
 			}
@@ -1070,6 +1068,250 @@ func TestDownloadVisitsInRange(t *testing.T) {
 		}
 	}
 	m, err := regexp.Match(`(?s).*2013-04-03.*2013-03-03.*2013-02-03.*2013-01-03.*`, body)
+	if err != nil {
+		t.Errorf("got error on regexp match: %v", err)
+	}
+	if !m {
+		t.Errorf("visit dates not sorted: %v", string(body))
+	}
+}
+
+func TestListVisitsByClient(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclients := []client{{Firstname: "frederic", Lastname: "ozanam"},
+		{Firstname: "Elizabeth", Lastname: "Seton"},
+	}
+	cltids := make([]int64, len(newclients))
+	for i, newclient := range newclients {
+		cltids[i], err = addclienttodb(newclient, inst)
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		if err != nil {
+			t.Fatalf("unable to add client: %v", err)
+		}
+	}
+
+	visits := [][]visit{
+		{
+			{Vincentians: "Michael, Mary Margaret",
+				Visitdate:           "2013-02-03",
+				Assistancerequested: "test1"},
+			{Vincentians: "Irene, Jim",
+				Visitdate:           "2013-01-03",
+				Assistancerequested: "test2"},
+		},
+		{
+			{Vincentians: "Eileen, Lynn",
+				Visitdate:           "2013-04-03",
+				Assistancerequested: "test3"},
+			{Vincentians: "Stu & Anne",
+				Visitdate:           "2013-03-03",
+				Assistancerequested: "test4"},
+		},
+	}
+
+	numvisits := 0
+	for i, viz := range visits {
+		for _, vst := range viz {
+			data, err := json.Marshal(vst)
+			if err != nil {
+				t.Fatalf("Failed to marshal %v", visits[i])
+			}
+			req, err := inst.NewRequest("PUT", "/visit/"+
+				strconv.FormatInt(cltids[i], 10), bytes.NewReader(data))
+			if err != nil {
+				t.Fatalf("Failed to create req: %v", err)
+			}
+			req.Header = map[string][]string{
+				"Content-Type": {"application/json"},
+			}
+			aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+			w := httptest.NewRecorder()
+			c := appengine.NewContext(req)
+			addTestUser(c, "test@example.org", true)
+
+			addvisit(c, w, req)
+
+			code := w.Code
+			if code != http.StatusOK {
+				t.Errorf("got code %v, want %v", code, http.StatusCreated)
+			}
+
+			body := w.Body.Bytes()
+			newrec := &visitrec{}
+			err = json.Unmarshal(body, newrec)
+			if err != nil {
+				t.Errorf("unable to parse %v: %v", string(body), err)
+			}
+			numvisits++
+		}
+	}
+
+	req, err := inst.NewRequest("GET", "/visitsbyclient?startdate=2013-01-03&enddate=2013-04-03", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w := httptest.NewRecorder()
+
+	c := appengine.NewContext(req)
+	listvisitsinrangebyclientpage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	body := w.Body.Bytes()
+	for _, viz := range visits {
+		for _, vst := range viz {
+			if !bytes.Contains(body, []byte(vst.Assistancerequested)) {
+				t.Errorf("unable to find %v in %v",
+					vst, string(body))
+			}
+		}
+	}
+	m, err := regexp.Match(`(?s).*2013-01-03.*2013-02-03.*2013-03-03.*2013-04-03.*`, body)
+	if err != nil {
+		t.Errorf("got error on regexp match: %v", err)
+	}
+	if !m {
+		t.Errorf("visit dates not sorted: %v", string(body))
+	}
+}
+
+func TestDownloadVisitsByClientInRange(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclients := []client{{Firstname: "frederic", Lastname: "ozanam"},
+		{Firstname: "Elizabeth", Lastname: "Seton"},
+	}
+	cltids := make([]int64, len(newclients))
+	for i, newclient := range newclients {
+		cltids[i], err = addclienttodb(newclient, inst)
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		if err != nil {
+			t.Fatalf("unable to add client: %v", err)
+		}
+	}
+
+	visits := [][]visit{
+		{
+			{Vincentians: "Michael, Mary Margaret",
+				Visitdate:           "2013-02-03",
+				Assistancerequested: "test1"},
+			{Vincentians: "Irene, Jim",
+				Visitdate:           "2013-01-03",
+				Assistancerequested: "test2"},
+		},
+		{
+			{Vincentians: "Eileen, Lynn",
+				Visitdate:           "2013-04-03",
+				Assistancerequested: "test3"},
+			{Vincentians: "Stu & Anne",
+				Visitdate:           "2013-03-03",
+				Assistancerequested: "test4"},
+		},
+	}
+
+	numvisits := 0
+	for i, viz := range visits {
+		for _, vst := range viz {
+			data, err := json.Marshal(vst)
+			if err != nil {
+				t.Fatalf("Failed to marshal %v", visits[i])
+			}
+			req, err := inst.NewRequest("PUT", "/visit/"+
+				strconv.FormatInt(cltids[i], 10), bytes.NewReader(data))
+			if err != nil {
+				t.Fatalf("Failed to create req: %v", err)
+			}
+			req.Header = map[string][]string{
+				"Content-Type": {"application/json"},
+			}
+			aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+			w := httptest.NewRecorder()
+			c := appengine.NewContext(req)
+			addTestUser(c, "test@example.org", true)
+
+			addvisit(c, w, req)
+
+			code := w.Code
+			if code != http.StatusOK {
+				t.Errorf("got code %v, want %v", code, http.StatusCreated)
+			}
+
+			body := w.Body.Bytes()
+			newrec := &visitrec{}
+			err = json.Unmarshal(body, newrec)
+			if err != nil {
+				t.Errorf("unable to parse %v: %v", string(body), err)
+			}
+			numvisits++
+		}
+	}
+
+	req, err := inst.NewRequest("GET", "/visitsbyclient?startdate=2013-01-03&enddate=2013-04-03&csv=true", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w := httptest.NewRecorder()
+
+	c := appengine.NewContext(req)
+	listvisitsinrangebyclientpage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	headers := w.HeaderMap
+	c.Infof("headers=%v", headers)
+	if headers["Content-Type"][0] != "text/csv" {
+		t.Errorf("expected Content-Type to contain text/csv but it is %v", headers)
+	}
+	body := w.Body.Bytes()
+	for i, viz := range visits {
+		for j, vst := range viz {
+			if !bytes.Contains(body, []byte(vst.Assistancerequested)) {
+				t.Errorf("unable to find %v in %v",
+					vst, string(body))
+			}
+			clientName := []byte(`"` + newclients[i].Lastname + `, ` + newclients[i].Firstname + `"`)
+			if !bytes.Contains(body, clientName) {
+				t.Errorf("CSV unable to find %v in %v", string(clientName), string(body))
+			}
+			visitData := []byte(`"` + vst.Visitdate + `","` +
+				vst.Vincentians + `","` +
+				vst.Assistancerequested + `","` +
+				vst.Giftcardamt + `","` +
+				vst.Numfoodboxes + `","` +
+				vst.Rentassistance + `","` +
+				vst.Utilitiesassistance + `","` +
+				vst.Waterbillassistance + `","` +
+				vst.Otherassistancetype + `","` +
+				vst.Otherassistanceamt + `","` +
+				vst.Vouchersclothing + `","` +
+				vst.Vouchersfurniture + `","` +
+				vst.Vouchersother + `","` +
+				vst.Comment + `"`)
+			if !bytes.Contains(body, visitData) {
+				t.Errorf("visit[%v,%v]: CSV unable to find %v in %v", i, j, string(visitData), string(body))
+			}
+		}
+	}
+	m, err := regexp.Match(`(?s).*2013-01-03.*2013-02-03.*2013-03-03.*2013-04-03.*`, body)
 	if err != nil {
 		t.Errorf("got error on regexp match: %v", err)
 	}

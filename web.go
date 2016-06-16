@@ -131,6 +131,7 @@ func init() {
 	http.Handle("/editvisit/", ContextHandler{editvisitpage})
 	http.Handle("/visits", ContextHandler{listvisitsinrangepage})
 	http.Handle("/visitsbyclient", ContextHandler{listvisitsinrangebyclientpage})
+	http.Handle("/dedupedvisits", ContextHandler{listdedupedvisitsinrangebyclientpage})
 	http.Handle("/users", ContextHandler{edituserspage})
 	http.Handle("/api/client", ContextHandler{addclient})
 	http.Handle("/api/client/", ContextHandler{editclient})
@@ -142,34 +143,34 @@ func init() {
 	http.Handle("/api/users/edit", ContextHandler{editusers})
 }
 
-var funcMap = template.FuncMap{"age": age,
+var funcMap = template.FuncMap{"ages": ages,
 	"girls":   numGirls,
 	"boys":    numBoys,
+	"adults":  numAdults,
+	"minors":  numMinors,
+	"seniors": numSeniors,
 	"famSize": famSize,
 	"add":     add,
 }
 var templates = template.Must(template.New("client").Funcs(funcMap).ParseGlob("*.html"))
 
-func age(dobs string) string {
+func age(dobs string) float64 {
 	if len(dobs) == 0 {
-		return ""
+		return 0
 	}
 	dob, err := time.Parse("2006-01-02", dobs)
 	if err != nil {
-		return ""
+		return -1
 	}
-	agens := time.Since(dob)
-	return strconv.FormatFloat(agens.Hours()/float64(24*365), 'f', 0, 64)
+	return time.Since(dob).Hours() / (24.0 * 365.25)
+}
+
+func ages(dobs string) string {
+	return strconv.FormatFloat(age(dobs), 'f', 0, 64)
 }
 
 func numBoys(children []fammbr) int {
-	n := 0
-	for _, child := range children {
-		if !child.Female {
-			n++
-		}
-	}
-	return n
+	return len(children) - numGirls(children)
 }
 
 func numGirls(children []fammbr) int {
@@ -182,23 +183,81 @@ func numGirls(children []fammbr) int {
 	return n
 }
 
-func famSize(clt client) (num int, err error) {
-	var men, women int = 0, 0
+func numMinors(children []fammbr) int {
+	n := 0
+	for _, child := range children {
+		if age(child.DOB) < 18.0 {
+			n++
+		}
+	}
+	return n
+}
+func numSeniors(clt client) (num int, err error) {
+	n := 0
+	if a := age(clt.DOB); a >= 60.0 {
+		n++
+	} else if a == -1.0 {
+		return 0, errors.New(fmt.Sprintf("unable to compute age from %v", clt.DOB))
+	}
+
+	for _, child := range clt.Fammbrs {
+		if a := age(child.DOB); a >= 60.0 {
+			n++
+		} else if a == -1.0 {
+			return 0, errors.New(fmt.Sprintf("unable to compute age from %v", child.DOB))
+		}
+	}
+	return n, err
+}
+
+func numAdults(clt client) (num int, err error) {
+	var men, women, seniors int = 0, 0, 0
 	if clt.Adultmales != "" {
 		men, err = strconv.Atoi(clt.Adultmales)
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("unable to parse %v",
+			return -1, errors.New(fmt.Sprintf("unable to parse %v",
 				clt.Adultmales))
 		}
 	}
 	if clt.Adultfemales != "" {
 		women, err = strconv.Atoi(clt.Adultfemales)
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("unable to parse %v",
+			return -1, errors.New(fmt.Sprintf("unable to parse %v",
 				clt.Adultfemales))
 		}
 	}
-	return men + women + len(clt.Fammbrs), nil
+	if age(clt.DOB) >= 60.0 {
+		seniors++
+	}
+	for _, child := range clt.Fammbrs {
+		switch childage := age(child.DOB); {
+		case childage >= 60.0:
+			seniors++
+		case childage >= 18.0:
+			if child.Female {
+				women++
+			} else {
+				men++
+			}
+		case childage < 0.0:
+			return 0, errors.New(fmt.Sprintf("unable to parse %v, got %.1f", child.DOB, childage))
+		}
+	}
+
+	n := men + women - seniors
+	if n < 0 {
+		n = 0
+	}
+	return n, nil
+}
+
+func famSize(clt client) (num int, err error) {
+	adults, err := numAdults(clt)
+	seniors, err := numSeniors(clt)
+	if err != nil {
+		return 0, err
+	}
+	return adults + seniors + len(clt.Fammbrs), nil
 }
 
 func add(a, b int) int {
@@ -879,6 +938,104 @@ func listvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWriter, r
 		}
 	} else {
 		err = templates.ExecuteTemplate(w, "visitsbyclient.html", data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+}
+
+type cltrecs []clientrec
+
+func (c cltrecs) Len() int {
+	return len(c)
+}
+
+func (c cltrecs) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+func (c cltrecs) Less(i, j int) bool {
+	return strings.ToLower(c[i].Clt.Lastname+`, `+c[i].Clt.Firstname) < strings.ToLower(c[j].Clt.Lastname+`, `+c[j].Clt.Firstname)
+}
+
+func listdedupedvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+	if !webuserOK(c, w, r) {
+		return
+	}
+
+	start := r.FormValue("startdate")
+	end := r.FormValue("enddate")
+	csv := r.FormValue("csv")
+	c.Infof("looking for visits between %v and %v; csv=%v", start, end, csv)
+
+	u := user.Current(c)
+
+	q := datastore.NewQuery("SVDPClientVisit").
+		Filter("Visitdate <=", end).
+		Filter("Visitdate >=", start).
+		KeysOnly()
+	keys, err := q.GetAll(c, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	cltmap := map[int64]*clientrec{}
+
+	c.Debugf("got ids %v", keys)
+	for _, k := range keys {
+		cltkey := k.Parent()
+		cltId := cltkey.IntID()
+
+		var rec *clientrec
+		rec, ok := cltmap[cltId]
+		c.Debugf("rec=%p/%v, ok=%v, cltmap=%v", rec, rec, ok, cltmap)
+		if !ok {
+			rec = new(clientrec)
+			rec.Id = cltId
+			err = datastore.Get(c, cltkey, &rec.Clt)
+			if err != nil {
+				c.Warningf("unable to retrieve client with key %v for visit with key %v",
+					cltkey.String(), k.String())
+			}
+
+			cltmap[cltId] = rec
+		}
+		c.Debugf("rec=%v, cltmap=%v", rec, cltmap)
+	}
+
+	c.Debugf("cltmap=%v", cltmap)
+	var cv cltrecs
+	for _, clt := range cltmap {
+		cv = append(cv, *clt)
+		c.Debugf("appended to cltmap")
+	}
+	c.Debugf("unsorted: cv=%v", cv)
+	sort.Sort(cv)
+	c.Debugf("sorted: cv=%v", cv)
+
+	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
+
+	data := struct {
+		U, LogoutUrl string
+		CV           cltrecs
+		Start        string
+		End          string
+	}{
+		u.Email,
+		l,
+		cv,
+		start,
+		end,
+	}
+	if csv == "true" {
+		w.Header().Set("Content-Type", "text/csv")
+		err = txttemplates.ExecuteTemplate(w, "dedupedvisits.csv", data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	} else {
+		err = templates.ExecuteTemplate(w, "dedupedvisits.html", data)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}

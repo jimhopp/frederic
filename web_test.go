@@ -3,12 +3,15 @@ package frederic
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"strconv"
 	"testing"
+	"time"
 
 	"appengine"
 	"appengine/aetest"
@@ -33,12 +36,179 @@ var endpoints = []EndpointTest{
 	{"/api/users/edit", false, editusers, http.StatusUnauthorized},
 	{"/", true, homepage, http.StatusFound},
 	{"/visits", true, listvisitsinrangepage, http.StatusFound},
+	{"/visitsbyclient", true, listvisitsinrangebyclientpage, http.StatusFound},
+	{"/dedupedvisits", true, listdedupedvisitsinrangebyclientpage, http.StatusFound},
 	{"/clients", true, listclientspage, http.StatusFound},
 	{"/client", true, getclientpage, http.StatusFound},
 	{"/newclient", true, newclientpage, http.StatusFound},
 	{"/editclient", true, editclientpage, http.StatusFound},
 	{"/recordvisit/", true, recordvisitpage, http.StatusFound},
 	{"/editvisit/", true, editvisitpage, http.StatusFound},
+}
+
+func getDOBforAge(yrs float64) string {
+
+	var yhrs float64 = yrs * 365.25 * 24 * -1
+	d, err := time.ParseDuration(strconv.FormatFloat(yhrs, 'f', 1, 64) + "h")
+	if err != nil {
+		return fmt.Sprintf("getDOBforAge: unable to parse duration for yrs=%.1f: %v", yrs, err)
+	}
+	tDOB := time.Now().Add(d)
+	return tDOB.Format("2006-01-02")
+}
+
+func TestAge(t *testing.T) {
+
+	if a := age(""); a != 0.0 {
+		t.Errorf("no date should give 0, is %.1f", a)
+	}
+
+	if a := age("1999-99-11"); a != -1.0 {
+		t.Errorf("bogus date should give -1, is %.1f", a)
+	}
+
+	a := age(getDOBforAge(17.0))
+	if math.Abs(a-17.0) > 0.1 {
+		t.Errorf("should be 17.0, is %.1f", a)
+	}
+}
+func TestNumBoys(t *testing.T) {
+	boys := []fammbr{{"Johnny", "2000-01-01", false},
+		{"Jeffy", "2001-01-01", false},
+		{"Julie", "2002-01-01", true},
+	}
+
+	if b := numBoys(boys); b != 2 {
+		t.Errorf("numboys should be 2, is %v", b)
+	}
+	if none := numBoys(make([]fammbr, 0)); none != 0 {
+		t.Errorf("numboys should be 0, is %v", none)
+	}
+}
+
+func TestNumGirls(t *testing.T) {
+	girls := []fammbr{{"Luisa", "2000-01-01", true},
+		{"Jeffy", "2001-01-01", false},
+		{"Julie", "2002-01-01", true},
+	}
+
+	if g := numGirls(girls); g != 2 {
+		t.Errorf("numgirls should be 2, is %v", g)
+	}
+	if none := numGirls(make([]fammbr, 0)); none != 0 {
+		t.Errorf("numgirls should be 0, is %v", none)
+	}
+}
+
+func TestNumMinors(t *testing.T) {
+
+	children := []fammbr{{"Luisa", getDOBforAge(17.0), true},
+		{"Jeffy", getDOBforAge(1.0), false},
+		{"Julie", getDOBforAge(25.0), true},
+	}
+
+	if n := numMinors(children); n != 2 {
+		t.Errorf("should be 2, is %d", n)
+	}
+	if none := numMinors(make([]fammbr, 0)); none != 0 {
+		t.Errorf("numMinors should be 0, is %v", none)
+	}
+}
+
+func TestNumAdults(t *testing.T) {
+
+	children := []fammbr{{"Luisa", getDOBforAge(17.0), true},
+		{"Jeffy", getDOBforAge(1.0), false},
+		{"Julie", getDOBforAge(25.0), true},
+	}
+
+	c := *new(client)
+	c.Fammbrs = children
+
+	if n, err := numAdults(c); n != 1 || err != nil {
+		if err == nil {
+			t.Errorf("should be 2, is %d", n)
+		} else {
+			t.Errorf("error on numAdults with c=%v: %v", c, err)
+		}
+	}
+	if none, err := numAdults(*new(client)); none != 0 || err != nil {
+		if err == nil {
+			t.Errorf("numAdults should be 0, is %v", none)
+		} else {
+			t.Errorf("error on numAdults with empty client: %v", err)
+		}
+	}
+	c.Adultfemales = "bogus"
+	if n, err := numAdults(c); err == nil {
+		t.Errorf("expected an error on %v but numAdults returned %v, %v", c, n, err)
+	}
+	c.Adultfemales = ""
+	c.Adultmales = "stuff"
+	if n, err := numAdults(c); err == nil {
+		t.Errorf("expected an error on %v but numAdults returned %v, %v", c, n, err)
+	}
+	c.Adultmales = ""
+	baddate := []fammbr{{"ill-formed", "xxxx", false}}
+	c.Fammbrs = baddate
+	if n, err := numAdults(c); err == nil {
+		t.Errorf("expected an error on %v but numAdults returned %v, %v", c, n, err)
+	}
+
+	c.Fammbrs = make([]fammbr, 0)
+	c.Adultmales = ""
+	c.Adultfemales = ""
+	if n, err := numAdults(c); n != 0 || err != nil {
+		if err == nil {
+			t.Errorf("should be 0, is %d", n)
+		} else {
+			t.Errorf("error on numAdults with c=%v: %v", c, err)
+		}
+	}
+	c.Fammbrs = children
+	c.Adultmales = "1"
+	c.Adultfemales = "2"
+	if n, err := numAdults(c); n != 4 || err != nil {
+		if err == nil {
+			t.Errorf("should be 4, is %d", n)
+		} else {
+			t.Errorf("error on numAdults with c=%v: %v", c, err)
+		}
+	}
+}
+
+func TestNumSeniors(t *testing.T) {
+	children := []fammbr{{"Luisa", getDOBforAge(17.0), true},
+		{"Jeffy", getDOBforAge(1.0), false},
+		{"Julie", getDOBforAge(65.0), true},
+	}
+
+	c := *new(client)
+	c.Adultfemales = "1"
+	c.DOB = "1930-05-01"
+	c.Fammbrs = children
+
+	if n, err := numSeniors(c); n != 2 || err != nil {
+		if err == nil {
+			t.Errorf("should be 2, is %d", n)
+		} else {
+			t.Errorf("got error: %v", err)
+		}
+	}
+
+	if none, err := numSeniors(*new(client)); none != 0 || err != nil {
+		if err == nil {
+			t.Errorf("numSeniors should be 0, is %v", none)
+		} else {
+			t.Errorf("got error: %v", err)
+		}
+	}
+
+	c.DOB = "xxxx-05-01"
+
+	if _, err := numSeniors(c); err == nil {
+		t.Errorf("expected err on numSeniors with c=%v but err is nil", c)
+	}
 }
 
 func TestHomePage(t *testing.T) {
@@ -1317,5 +1487,225 @@ func TestDownloadVisitsByClientInRange(t *testing.T) {
 	}
 	if !m {
 		t.Errorf("visit dates not sorted: %v", string(body))
+	}
+}
+
+func TestDedupedVisitsByClient(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclients := []client{{Firstname: "frederic", Lastname: "ozanam", DOB: getDOBforAge(49), Adultmales: "1"},
+		{Firstname: "Elizabeth", Lastname: "Seton", DOB: getDOBforAge(62), Adultfemales: "1"},
+	}
+	cltids := make([]int64, len(newclients))
+	for i, newclient := range newclients {
+		cltids[i], err = addclienttodb(newclient, inst)
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		if err != nil {
+			t.Fatalf("unable to add client: %v", err)
+		}
+	}
+
+	visits := [][]visit{
+		{
+			{Vincentians: "Michael, Mary Margaret",
+				Visitdate:           "2013-02-03",
+				Assistancerequested: "test1"},
+			{Vincentians: "Irene, Jim",
+				Visitdate:           "2013-01-03",
+				Assistancerequested: "test2"},
+		},
+		{
+			{Vincentians: "Eileen, Lynn",
+				Visitdate:           "2013-04-03",
+				Assistancerequested: "test3"},
+			{Vincentians: "Stu & Anne",
+				Visitdate:           "2013-03-03",
+				Assistancerequested: "test4"},
+		},
+	}
+
+	numvisits := 0
+	for i, viz := range visits {
+		for _, vst := range viz {
+			data, err := json.Marshal(vst)
+			if err != nil {
+				t.Fatalf("Failed to marshal %v", visits[i])
+			}
+			req, err := inst.NewRequest("PUT", "/visit/"+
+				strconv.FormatInt(cltids[i], 10), bytes.NewReader(data))
+			if err != nil {
+				t.Fatalf("Failed to create req: %v", err)
+			}
+			req.Header = map[string][]string{
+				"Content-Type": {"application/json"},
+			}
+			aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+			w := httptest.NewRecorder()
+			c := appengine.NewContext(req)
+			addTestUser(c, "test@example.org", true)
+
+			addvisit(c, w, req)
+
+			code := w.Code
+			if code != http.StatusOK {
+				t.Errorf("got code %v, want %v", code, http.StatusCreated)
+			}
+
+			body := w.Body.Bytes()
+			newrec := &visitrec{}
+			err = json.Unmarshal(body, newrec)
+			if err != nil {
+				t.Errorf("unable to parse %v: %v", string(body), err)
+			}
+			numvisits++
+		}
+	}
+
+	req, err := inst.NewRequest("GET", "/dedupedvisits?startdate=2013-01-03&enddate=2013-04-03", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w := httptest.NewRecorder()
+
+	c := appengine.NewContext(req)
+	listdedupedvisitsinrangebyclientpage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	body := w.Body.Bytes()
+	for _, clt := range newclients {
+		if !bytes.Contains(body, []byte(clt.Lastname)) {
+			t.Errorf("unable to find %v in %v",
+				clt, string(body))
+		}
+	}
+	m, err := regexp.Match(`(?s).*1</td>.*0</td>.*0</td>.*1</td>.*0</td>.*1</td>.*0</td>.*1</td>.*`, body)
+	if err != nil {
+		t.Errorf("got error on regexp match: %v", err)
+	}
+	if !m {
+		t.Errorf("people assisted counts wrong: %v", string(body))
+	}
+}
+
+func TestDownloadDedupedVisitsByClient(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclients := []client{{Firstname: "frederic", Lastname: "ozanam", DOB: getDOBforAge(49), Adultmales: "1"},
+		{Firstname: "Elizabeth", Lastname: "Seton", DOB: getDOBforAge(62), Adultfemales: "1"},
+	}
+	cltids := make([]int64, len(newclients))
+	for i, newclient := range newclients {
+		cltids[i], err = addclienttodb(newclient, inst)
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		if err != nil {
+			t.Fatalf("unable to add client: %v", err)
+		}
+	}
+
+	visits := [][]visit{
+		{
+			{Vincentians: "Michael, Mary Margaret",
+				Visitdate:           "2013-02-03",
+				Assistancerequested: "test1"},
+			{Vincentians: "Irene, Jim",
+				Visitdate:           "2013-01-03",
+				Assistancerequested: "test2"},
+		},
+		{
+			{Vincentians: "Eileen, Lynn",
+				Visitdate:           "2013-04-03",
+				Assistancerequested: "test3"},
+			{Vincentians: "Stu & Anne",
+				Visitdate:           "2013-03-03",
+				Assistancerequested: "test4"},
+		},
+	}
+
+	numvisits := 0
+	for i, viz := range visits {
+		for _, vst := range viz {
+			data, err := json.Marshal(vst)
+			if err != nil {
+				t.Fatalf("Failed to marshal %v", visits[i])
+			}
+			req, err := inst.NewRequest("PUT", "/visit/"+
+				strconv.FormatInt(cltids[i], 10), bytes.NewReader(data))
+			if err != nil {
+				t.Fatalf("Failed to create req: %v", err)
+			}
+			req.Header = map[string][]string{
+				"Content-Type": {"application/json"},
+			}
+			aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+			w := httptest.NewRecorder()
+			c := appengine.NewContext(req)
+			addTestUser(c, "test@example.org", true)
+
+			addvisit(c, w, req)
+
+			code := w.Code
+			if code != http.StatusOK {
+				t.Errorf("got code %v, want %v", code, http.StatusCreated)
+			}
+
+			body := w.Body.Bytes()
+			newrec := &visitrec{}
+			err = json.Unmarshal(body, newrec)
+			if err != nil {
+				t.Errorf("unable to parse %v: %v", string(body), err)
+			}
+			numvisits++
+		}
+	}
+
+	req, err := inst.NewRequest("GET", "/dedupedvisits?startdate=2013-01-03&enddate=2013-04-03&csv=true", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w := httptest.NewRecorder()
+
+	c := appengine.NewContext(req)
+	listdedupedvisitsinrangebyclientpage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	headers := w.HeaderMap
+	c.Infof("headers=%v", headers)
+	if headers["Content-Type"][0] != "text/csv" {
+		t.Errorf("expected Content-Type to contain text/csv but it is %v", headers)
+	}
+
+	body := w.Body.Bytes()
+	for _, clt := range newclients {
+		if !bytes.Contains(body, []byte(clt.Lastname)) {
+			t.Errorf("unable to find %v in %v",
+				clt, string(body))
+		}
+	}
+	m, err := regexp.Match(`(?s).*"1".*"0".*"0".*"1".*"0".*"1".*"0".*"1".*`, body)
+	if err != nil {
+		t.Errorf("got error on regexp match: %v", err)
+	}
+	if !m {
+		t.Errorf("people assisted counts wrong: %v", string(body))
 	}
 }

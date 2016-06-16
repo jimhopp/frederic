@@ -60,7 +60,7 @@
               <tr>
                 <td><input type="text" id="fammbrnm{{ $i }}" name="fammbrnm{{ $i }}" value="{{ .Name }}" disabled="true"></td>
                 <td><input type="text" id="fammbrdob{{ $i }}" name="fammbrdob{{ $i }}" value="{{ .DOB }}" disabled="true"></td>
-                <td><input type="text" id="fammbrage{{ $i }}" name="fammbrage{{ $i }}" value="{{ .DOB | age }}" disabled="true"></td>
+                <td><input type="text" id="fammbrage{{ $i }}" name="fammbrage{{ $i }}" value="{{ .DOB | ages }}" disabled="true"></td>
                 <td><label>Male<input type="radio" name="fammbrgender{{ $i }}" id="fammbrmale{{ $i }}" value="Male" {{if not .Female }}checked="checked"{{end}} disabled="true"></label><label>Female<input type="radio" id="fammbrfemale{{ $i }}" name="fammbrgender{{ $i }}" value="Female" {{ if .Female }}checked="checked"{{end}} disabled="true"></label></td>
               </tr>
             {{ end }}

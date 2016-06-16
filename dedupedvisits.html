@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <title>St. Vincent de Paul (St. Charles Borromeo Conference) Visits Counts</title>
+  {{ template "scripts" }}
+  <script type="text/javascript" src="/js/json.js"></script>
+  <body class="main">
+   {{ template "header" . }}
+    <form action="/dedupedvisits" method="GET">
+     <label>start date: <span class="invisible" id="sdatefmt">(yyyy-mm-dd)</span></label><input type="date" id="startdate" value="{{ .Start }}" name="startdate"/>
+     <label>end date: <span class="invisible" id="edatefmt">(yyyy-mm-dd)</span></label><input type="date" id="enddate" value="{{ .End }}" name="enddate"/>
+      <input type="submit">
+    </form>
+    {{ if gt .Start "" }}
+    <h4 class="contained">Unique people assisted between {{ .Start }} and {{ .End }}</h4>
+    <a class="contained" href="/dedupedvisits?startdate={{ .Start }}&enddate={{ .End }}&csv=true">Download</a>
+    <br>
+    <br>
+    {{ end }}
+    <table class="contained">
+      <thead>
+        <tr>
+	<th class="bordered">Client</th>
+	<th class="bordered">Adults (18-59)</th>
+	<th class="bordered">Seniors (60+) </th>
+	<th class="bordered">Minors</th>
+	<th class="bordered">Family Size</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{ range $i, $clt := .CV }}
+        <tr>
+		<td class="bordered"><a href="/client/{{ .Id }}">{{ .Clt.Lastname }}, {{ .Clt.Firstname }}</a></td>
+		<td class="bordered number">{{ adults .Clt}}</td>
+		<td class="bordered number">{{ seniors .Clt }}</td>
+		<td class="bordered number">{{ minors .Clt.Fammbrs }}</td>
+		<td class="bordered number">{{ famSize .Clt }}</td>
+        </tr>
+      {{ end }}
+      </tbody>
+    </table>
+  <script>
+   $( document ).ready(function() {
+    console.log( 'ready!' );
+
+    if (!browserSupportsDateInput()) {
+      console.log("trying to un-hide datefmt hints");
+      $(' span#sdatefmt ').removeClass("invisible");
+      $(' span#edatefmt ').removeClass("invisible");
+    }
+    });
+    function visitedtoday() {
+        today = new Date();
+        day = today.getDate();
+        if (day < 10) { day = "0" + day;}
+        month = parseFloat(today.getMonth() + 1);
+        if (month < 10) { month = "0" + month;}
+
+	$(' input#visitdate' ).val(today.getFullYear() + '-' + month + '-' + day);
+    }
+  </script>
+  </body>
+</html>

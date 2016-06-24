@@ -177,6 +177,40 @@ func TestNumAdults(t *testing.T) {
 	}
 }
 
+func TestFamSize(t *testing.T) {
+	children := []fammbr{{"Luisa", getDOBforAge(17.0), true},
+		{"Jeffy", getDOBforAge(1.0), false},
+		{"Julie", getDOBforAge(65.0), true},
+	}
+
+	c := *new(client)
+	c.Adultfemales = "1"
+	c.DOB = "1930-05-01"
+	c.Fammbrs = children
+
+	if n, err := famSize(c); n != 4 || err != nil {
+		if err == nil {
+			t.Errorf("should be 4, is %d", n)
+		} else {
+			t.Errorf("got error: %v", err)
+		}
+	}
+
+	if none, err := famSize(*new(client)); none != 0 || err != nil {
+		if err == nil {
+			t.Errorf("should be 0, is %v", none)
+		} else {
+			t.Errorf("got error: %v", err)
+		}
+	}
+
+	c.DOB = "xxxx-05-01"
+
+	if _, err := famSize(c); err == nil {
+		t.Errorf("expected err with c=%v but err is nil", c)
+	}
+}
+
 func TestNumSeniors(t *testing.T) {
 	children := []fammbr{{"Luisa", getDOBforAge(17.0), true},
 		{"Jeffy", getDOBforAge(1.0), false},
@@ -1588,7 +1622,7 @@ func TestDedupedVisitsByClient(t *testing.T) {
 				clt, string(body))
 		}
 	}
-	m, err := regexp.Match(`(?s).*1</td>.*0</td>.*0</td>.*1</td>.*0</td>.*1</td>.*0</td>.*1</td>.*`, body)
+	m, err := regexp.Match(`(?s).*ozanam, frederic</a></td>.*1</td>.*0</td>.*0</td>.*1</td>.*Seton, Elizabeth</a></td>.*0</td>.*1</td>.*0</td>.*1</td>.*1</td>.*1</td>.*0</td>.*2</td>`, body)
 	if err != nil {
 		t.Errorf("got error on regexp match: %v", err)
 	}
@@ -1701,7 +1735,7 @@ func TestDownloadDedupedVisitsByClient(t *testing.T) {
 				clt, string(body))
 		}
 	}
-	m, err := regexp.Match(`(?s).*"1".*"0".*"0".*"1".*"0".*"1".*"0".*"1".*`, body)
+	m, err := regexp.Match(`(?s).*"ozanam, frederic"."*1".*"0".*"0".*"1".*"Seton, Elizabeth".*"0".*"1".*"0".*"1".*"1".*"1".*"0".*"2"`, body)
 	if err != nil {
 		t.Errorf("got error on regexp match: %v", err)
 	}

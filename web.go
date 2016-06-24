@@ -146,11 +146,8 @@ func init() {
 var funcMap = template.FuncMap{"ages": ages,
 	"girls":   numGirls,
 	"boys":    numBoys,
-	"adults":  numAdults,
-	"minors":  numMinors,
-	"seniors": numSeniors,
-	"famSize": famSize,
 	"add":     add,
+	"famSize": famSize,
 }
 var templates = template.Must(template.New("client").Funcs(funcMap).ParseGlob("*.html"))
 
@@ -253,11 +250,15 @@ func numAdults(clt client) (num int, err error) {
 
 func famSize(clt client) (num int, err error) {
 	adults, err := numAdults(clt)
+	if err != nil {
+		return 0, err
+	}
 	seniors, err := numSeniors(clt)
 	if err != nil {
 		return 0, err
 	}
-	return adults + seniors + len(clt.Fammbrs), nil
+	minors := numMinors(clt.Fammbrs)
+	return adults + seniors + minors, nil
 }
 
 func add(a, b int) int {
@@ -944,18 +945,27 @@ func listvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWriter, r
 	}
 }
 
-type cltrecs []clientrec
-
-func (c cltrecs) Len() int {
-	return len(c)
+type family struct {
+	Id         int64
+	Name       string
+	Adults     int
+	Seniors    int
+	Minors     int
+	FamilySize int
 }
 
-func (c cltrecs) Swap(i, j int) {
-	c[i], c[j] = c[j], c[i]
+type families []family
+
+func (f families) Len() int {
+	return len(f)
 }
 
-func (c cltrecs) Less(i, j int) bool {
-	return strings.ToLower(c[i].Clt.Lastname+`, `+c[i].Clt.Firstname) < strings.ToLower(c[j].Clt.Lastname+`, `+c[j].Clt.Firstname)
+func (f families) Swap(i, j int) {
+	f[i], f[j] = f[j], f[i]
+}
+
+func (f families) Less(i, j int) bool {
+	return strings.ToLower(f[i].Name) < strings.ToLower(f[j].Name)
 }
 
 func listdedupedvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
@@ -980,35 +990,60 @@ func listdedupedvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWr
 		return
 	}
 
-	cltmap := map[int64]*clientrec{}
+	fammap := map[int64]*family{}
+
+	var sumAdults, sumSeniors, sumMinors, sumFamSize int
 
 	c.Debugf("got ids %v", keys)
 	for _, k := range keys {
 		cltkey := k.Parent()
 		cltId := cltkey.IntID()
 
-		var rec *clientrec
-		rec, ok := cltmap[cltId]
-		c.Debugf("rec=%p/%v, ok=%v, cltmap=%v", rec, rec, ok, cltmap)
+		var rec *family
+		rec, ok := fammap[cltId]
+		c.Debugf("rec=%p/%v, ok=%v, fammap=%v", rec, rec, ok, fammap)
 		if !ok {
-			rec = new(clientrec)
+			rec = new(family)
 			rec.Id = cltId
-			err = datastore.Get(c, cltkey, &rec.Clt)
+			var clt client = *new(client)
+			err = datastore.Get(c, cltkey, &clt)
 			if err != nil {
 				c.Warningf("unable to retrieve client with key %v for visit with key %v",
 					cltkey.String(), k.String())
+				continue
+			}
+			rec.Name = clt.Lastname + `, ` + clt.Firstname
+			rec.Adults, err = numAdults(clt)
+			if err != nil {
+				c.Warningf("error getting numAdults for clt %v: %v", clt, err)
+				rec.Adults = 0
+			}
+			rec.Seniors, err = numSeniors(clt)
+			if err != nil {
+				c.Warningf("error getting numSeniors for clt %v: %v", clt, err)
+				rec.Seniors = 0
+			}
+			rec.Minors = numMinors(clt.Fammbrs)
+			rec.FamilySize, err = famSize(clt)
+			if err != nil {
+				c.Warningf("error getting famSize for clt %v: %v", clt, err)
+				rec.Seniors = 0
 			}
 
-			cltmap[cltId] = rec
+			fammap[cltId] = rec
+			sumAdults += rec.Adults
+			sumSeniors += rec.Seniors
+			sumMinors += rec.Minors
+			sumFamSize += rec.FamilySize
 		}
-		c.Debugf("rec=%v, cltmap=%v", rec, cltmap)
+		c.Debugf("rec=%v, fammap=%v", rec, fammap)
 	}
 
-	c.Debugf("cltmap=%v", cltmap)
-	var cv cltrecs
-	for _, clt := range cltmap {
-		cv = append(cv, *clt)
-		c.Debugf("appended to cltmap")
+	c.Debugf("fammap=%v", fammap)
+	var cv families
+	for _, f := range fammap {
+		cv = append(cv, *f)
+		c.Debugf("appended to fammap")
 	}
 	c.Debugf("unsorted: cv=%v", cv)
 	sort.Sort(cv)
@@ -1018,13 +1053,21 @@ func listdedupedvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWr
 
 	data := struct {
 		U, LogoutUrl string
-		CV           cltrecs
+		CV           families
+		TotalAdults  int
+		TotalSeniors int
+		TotalMinors  int
+		TotalFamSize int
 		Start        string
 		End          string
 	}{
 		u.Email,
 		l,
 		cv,
+		sumAdults,
+		sumSeniors,
+		sumMinors,
+		sumFamSize,
 		start,
 		end,
 	}

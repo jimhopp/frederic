@@ -1,5 +1,6 @@
 Start Date,End Date
 {{ .Start }},{{ .End }}
 "Client","Adults (18-59)","Seniors (60+)","Minors","Family Size"
-{{ range .CV }}"{{ .Clt.Lastname }}, {{ .Clt.Firstname }}","{{ adults .Clt }}","{{ seniors .Clt }}","{{ minors .Clt.Fammbrs }}","{{ famSize .Clt }}"
+{{ range .CV }}"{{ .Name }}","{{ .Adults }}","{{ .Seniors }}","{{ .Minors }}","{{ .FamilySize }}"
 {{ end }}
+"","{{ .TotalAdults }}","{{ .TotalSeniors }}","{{ .TotalMinors }}","{{ .TotalFamSize }}"

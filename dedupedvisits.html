@@ -29,14 +29,23 @@
       <tbody>
       {{ range $i, $clt := .CV }}
         <tr>
-		<td class="bordered"><a href="/client/{{ .Id }}">{{ .Clt.Lastname }}, {{ .Clt.Firstname }}</a></td>
-		<td class="bordered number">{{ adults .Clt}}</td>
-		<td class="bordered number">{{ seniors .Clt }}</td>
-		<td class="bordered number">{{ minors .Clt.Fammbrs }}</td>
-		<td class="bordered number">{{ famSize .Clt }}</td>
+		<td class="bordered"><a href="/client/{{ .Id }}">{{ .Name }}</a></td>
+		<td class="bordered number">{{ .Adults}}</td>
+		<td class="bordered number">{{ .Seniors }}</td>
+		<td class="bordered number">{{ .Minors }}</td>
+		<td class="bordered number">{{ .FamilySize }}</td>
         </tr>
       {{ end }}
       </tbody>
+      <tfoot>
+	<tr>
+          <td class="bordered"></td>
+	  <td class="bordered number">{{ .TotalAdults}}</td>
+	  <td class="bordered number">{{ .TotalSeniors }}</td>
+	  <td class="bordered number">{{ .TotalMinors }}</td>
+	  <td class="bordered number">{{ .TotalFamSize }}</td>
+	</tr>
+     </tfoot>
     </table>
   <script>
    $( document ).ready(function() {

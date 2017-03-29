@@ -28,7 +28,7 @@ func TestAddClient(t *testing.T) {
 	}
 	defer inst.Close()
 
-	data := strings.NewReader(`{"Firstname": "frederic", "Lastname": "ozanam","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`)
+	data := strings.NewReader(`{"Firstname": "frederic", "Lastname": "ozanam","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"","Fammbrs":[{"Name":"Marie","DOB":"1842-09-06","Female":true}],"ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`)
 	req, err := inst.NewRequest("PUT", "/api/client", data)
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
@@ -50,7 +50,7 @@ func TestAddClient(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body := w.Body.Bytes()
-	expected := []byte(`{"Firstname":"frederic","Lastname":"ozanam","Address":"123 Easy St","Apt":"9","CrossStreet":"Main","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"UNK","ReferredBy":"districtofc","Notes":"landlord blahblahblah","Adultmales":"","Adultfemales":"","Fammbrs":null,"Financials":{"FatherIncome":"","MotherIncome":"","AFDCIncome":"","GAIncome":"","SSIIncome":"","UnemploymentInsIncome":"","SocialSecurityIncome":"","AlimonyIncome":"","ChildSupportIncome":"","Other1Income":"","Other1IncomeType":"","Other2Income":"","Other2IncomeType":"","Other3Income":"","Other3IncomeType":"","RentExpense":"","Section8Voucher":false,"UtilitiesExpense":"","WaterExpense":"","PhoneExpense":"","FoodExpense":"","GasExpense":"","CarPaymentExpense":"","TVInternetExpense":"","GarbageExpense":"","Other1Expense":"","Other1ExpenseType":"","Other2Expense":"","Other2ExpenseType":"","Other3Expense":"","Other3ExpenseType":"","TotalExpense":"","TotalIncome":""}}`)
+	expected := []byte(`{"Firstname":"frederic","Lastname":"ozanam","Address":"123 Easy St","Apt":"9","CrossStreet":"Main","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"UNK","ReferredBy":"districtofc","Notes":"landlord blahblahblah","Adultmales":"","Adultfemales":"","Fammbrs":[{"Name":"Marie","DOB":"1842-09-06","Female":true}],"Financials":{"FatherIncome":"","MotherIncome":"","AFDCIncome":"","GAIncome":"","SSIIncome":"","UnemploymentInsIncome":"","SocialSecurityIncome":"","AlimonyIncome":"","ChildSupportIncome":"","Other1Income":"","Other1IncomeType":"","Other2Income":"","Other2IncomeType":"","Other3Income":"","Other3IncomeType":"","RentExpense":"","Section8Voucher":false,"UtilitiesExpense":"","WaterExpense":"","PhoneExpense":"","FoodExpense":"","GasExpense":"","CarPaymentExpense":"","TVInternetExpense":"","GarbageExpense":"","Other1Expense":"","Other1ExpenseType":"","Other2Expense":"","Other2ExpenseType":"","Other3Expense":"","Other3ExpenseType":"","TotalExpense":"","TotalIncome":""}}`)
 	if !bytes.Contains(body, expected) {
 		t.Errorf("got body %v (%v), want %v", body, string(body),
 			expected)
@@ -166,8 +166,16 @@ func TestAddClientInvalidValue(t *testing.T) {
 			[]byte(`Ethnicity must be one of `)},
 		{strings.NewReader(`{"Firstname": "Hello", "Lastname": "Test","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"hispanic","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
 			[]byte(`Ethnicity must be one of `)},
+		{strings.NewReader(`{"Firstname": "Suzanne", "Lastname": "xxx","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"2023-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"UNK","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`cannot be in future`)},
+		{strings.NewReader(`{"Firstname": "Suzanne", "Lastname": "xxx","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"xxxxx","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"PI","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`Unable to parse DOB`)},
 		{strings.NewReader(`{"Firstname": "Suzanne", "Lastname": "xxx","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1823-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Altphonedesc":"POP-CORN","Ethnicity":"other","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
 			[]byte(`Ethnicity must be one of `)},
+		{strings.NewReader(`{"Firstname": "Suzanne", "Lastname": "xxx","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1973-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Fammbrs":[{"Name":"child","DOB":"2115-09-13","Female":true}],"Altphonedesc":"POP-CORN","Ethnicity":"UNK","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`cannot be in future`)},
+		{strings.NewReader(`{"Firstname": "Suzanne", "Lastname": "xxx","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1973-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Fammbrs":[{"Name":"child","DOB":"crap","Female":true}],"Altphonedesc":"POP-CORN","Ethnicity":"UNK","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`Unable to parse DOB`)},
 	}
 
 	for i, x := range invalid {
@@ -1073,9 +1081,13 @@ func TestUpdateInvalidData(t *testing.T) {
 	}
 	bogus := []reqresp{
 		{strings.NewReader(`{"Firstname": "Frederic", "Lastname": "Ozanam", "DOB":"alphabet"}`),
-			[]byte(`parsing time "alphabet" as "2006-01-02": cannot parse "alphabet" as "2006"`)},
+			[]byte(`Unable to parse DOB`)},
 		{strings.NewReader(`{"Firstname": "Frederic", "Lastname": "Ozanam", "DOB":"1985-01-01", "Ethnicity":"unknown"}`),
 			[]byte("Ethnicity must be one of ")},
+		{strings.NewReader(`{"Firstname": "Suzanne", "Lastname": "xxx","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1973-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Fammbrs":[{"Name":"child","DOB":"2115-09-13","Female":true}],"Altphonedesc":"POP-CORN","Ethnicity":"UNK","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`cannot be in future`)},
+		{strings.NewReader(`{"Firstname": "Suzanne", "Lastname": "xxx","Address":"123 Easy St","CrossStreet":"Main","Apt":"9","DOB":"1973-04-13","Phonenum":"650-555-1212","Altphonenum":"650-767-2676","Fammbrs":[{"Name":"child","DOB":"crap","Female":true}],"Altphonedesc":"POP-CORN","Ethnicity":"UNK","ReferredBy":"districtofc","Notes":"landlord blahblahblah"}`),
+			[]byte(`Unable to parse DOB`)},
 	}
 	for i, x := range bogus {
 		req, err := inst.NewRequest("PUT", "/client/"+strconv.FormatInt(id,

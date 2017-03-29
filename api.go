@@ -223,15 +223,6 @@ func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(clt.DOB) > 0 {
-		if _, err = time.Parse("2006-01-02", clt.DOB); err != nil {
-			c.Errorf("unable to parse DOB %v, err %v",
-				clt.DOB, err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-	}
-
 	key, err := putRecord(c, "SVDPClient", id, nil, clt)
 	if err != nil {
 		c.Errorf("error on putRecord: :%v\n", err)
@@ -329,14 +320,37 @@ func checkClientRequired(clt *client) error {
 
 func checkClientValues(clt *client) error {
 
-	if ethnicities[clt.Ethnicity] {
-		return nil
+	if !ethnicities[clt.Ethnicity] {
+		var valid []byte
+		for k, _ := range ethnicities {
+			valid = append(valid, (k + ",")...)
+		}
+		return errors.New("Ethnicity must be one of " + string(valid))
 	}
-	var valid []byte
-	for k, _ := range ethnicities {
-		valid = append(valid, (k + ",")...)
+
+	if err := checkDOB(clt.DOB); err != nil {
+		return err
 	}
-	return errors.New("Ethnicity must be one of " + string(valid))
+	for _, child := range clt.Fammbrs {
+		if err := checkDOB(child.DOB); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func checkDOB(dob string) error {
+	now := time.Now()
+	if len(dob) > 0 {
+		dobtime, err := time.Parse("2006-01-02", dob)
+		if err != nil {
+			return errors.New("Unable to parse DOB " + dob)
+		}
+		if dobtime.After(now) {
+			return errors.New("DOB " + dob + " cannot be in future")
+		}
+	}
+	return nil
 }
 
 func checkVisitRequired(vst *visit) error {

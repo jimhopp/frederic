@@ -13,13 +13,15 @@ import (
 	"strings"
 	"time"
 
-	"appengine"
-	"appengine/datastore"
-	"appengine/user"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/user"
 )
 
 type ContextHandler struct {
-	Real func(appengine.Context, http.ResponseWriter, *http.Request)
+	Real func(context.Context, http.ResponseWriter, *http.Request)
 }
 
 type client struct {
@@ -265,7 +267,7 @@ func add(a, b int) int {
 	return a + b
 }
 
-func webuserOK(c appengine.Context, w http.ResponseWriter, r *http.Request) bool {
+func webuserOK(c context.Context, w http.ResponseWriter, r *http.Request) bool {
 	if !userauthenticated(c) {
 		url, err := user.LoginURL(c, r.URL.String())
 		if err != nil {
@@ -279,23 +281,23 @@ func webuserOK(c appengine.Context, w http.ResponseWriter, r *http.Request) bool
 	u := user.Current(c)
 	authzed, err := userauthorized(c, u.Email)
 	if err != nil {
-		c.Errorf("authorization error: %v", err)
+		log.Errorf(c, "authorization error: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return false
 	}
 	if !authzed {
-		c.Warningf("authorization failure: %v", u.Email)
+		log.Warningf(c, "authorization failure: %v", u.Email)
 		w.WriteHeader(http.StatusForbidden)
 		err = templates.ExecuteTemplate(w, "unauthorized.html", nil)
 		if err != nil {
-			c.Errorf("unauthorized user and got err on template: %v", err)
+			log.Errorf(c, "unauthorized user and got err on template: %v", err)
 		}
 		return false
 	}
 	return true
 }
 
-func homepage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func homepage(c context.Context, w http.ResponseWriter, r *http.Request) {
 	if !webuserOK(c, w, r) {
 		return
 	}
@@ -332,7 +334,7 @@ func (c clientreclist) Less(i, j int) bool {
 	}
 }
 
-func listclientspage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func listclientspage(c context.Context, w http.ResponseWriter, r *http.Request) {
 	if !webuserOK(c, w, r) {
 		return
 	}
@@ -370,7 +372,7 @@ func listclientspage(c appengine.Context, w http.ResponseWriter, r *http.Request
 	}
 }
 
-func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func getclientpage(c context.Context, w http.ResponseWriter, r *http.Request) {
 	if !webuserOK(c, w, r) {
 		return
 	}
@@ -385,13 +387,13 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	}
 	idstr := re.FindString(r.URL.Path)
 	if len(idstr) == 0 {
-		c.Warningf("id missing in path")
+		log.Warningf(c, "id missing in path")
 		http.Error(w, "client id missing in path", http.StatusNotFound)
 		return
 	}
 	clientid, err := strconv.ParseInt(idstr, 10, 64)
 	if err != nil {
-		c.Warningf("got error %v trying to parse id %v\n", err, clientid)
+		log.Warningf(c, "got error %v trying to parse id %v\n", err, clientid)
 		http.Error(w, "error parsing client id "+idstr+
 			" ("+err.Error()+")", http.StatusInternalServerError)
 		return
@@ -400,7 +402,7 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	var clt client
 	err = datastore.Get(c, key, &clt)
 	if err != nil {
-		c.Warningf("got error %v on datastore get for key %v\n", err,
+		log.Warningf(c, "got error %v on datastore get for key %v\n", err,
 			key)
 		http.Error(w, "unable to find client",
 			http.StatusNotFound)
@@ -411,7 +413,7 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	var visits []visit
 	visitkeys, err := q.GetAll(c, &visits)
 	if err != nil {
-		c.Warningf("got error %v on datastore get for visits with key %v\n", err,
+		log.Warningf(c, "got error %v on datastore get for visits with key %v\n", err,
 			key)
 		http.Error(w, "unable to find visits",
 			http.StatusInternalServerError)
@@ -430,7 +432,7 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	_, err = q.GetAll(c, &updates)
 
 	if err != nil {
-		c.Warningf("got error %v on datastore get for updates with key %v\n", err,
+		log.Warningf(c, "got error %v on datastore get for updates with key %v\n", err,
 			key)
 		http.Error(w, "unable to find updates",
 			http.StatusInternalServerError)
@@ -458,7 +460,7 @@ func getclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func newclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func newclientpage(c context.Context, w http.ResponseWriter, r *http.Request) {
 	if !webuserOK(c, w, r) {
 		return
 	}
@@ -483,7 +485,7 @@ func newclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func editclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func editclientpage(c context.Context, w http.ResponseWriter, r *http.Request) {
 	if !webuserOK(c, w, r) {
 		return
 	}
@@ -499,7 +501,7 @@ func editclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request)
 	idstr := re.FindString(r.URL.Path)
 	id, err := strconv.ParseInt(idstr, 10, 64)
 	if err != nil {
-		c.Warningf("got error %v trying to parse id %v\n", err, id)
+		log.Warningf(c, "got error %v trying to parse id %v\n", err, id)
 		http.Error(w, "unable to find client", http.StatusNotFound)
 		return
 	}
@@ -507,7 +509,7 @@ func editclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request)
 	var clt client
 	err = datastore.Get(c, key, &clt)
 	if err != nil {
-		c.Warningf("got error %v on datastore get for key %v\n", err,
+		log.Warningf(c, "got error %v on datastore get for key %v\n", err,
 			key)
 		http.Error(w, "unable to find client",
 			http.StatusNotFound)
@@ -529,7 +531,7 @@ func editclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func recordvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func recordvisitpage(c context.Context, w http.ResponseWriter, r *http.Request) {
 	if !webuserOK(c, w, r) {
 		return
 	}
@@ -578,7 +580,7 @@ func recordvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request
 	}
 }
 
-func editvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func editvisitpage(c context.Context, w http.ResponseWriter, r *http.Request) {
 	if !webuserOK(c, w, r) {
 		return
 	}
@@ -596,10 +598,10 @@ func editvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	cltidstr := string(matches[1])
 	vstidstr := string(matches[2])
 
-	c.Debugf("parsed id clt %v, vst %v from %v", cltidstr, vstidstr, r.URL.Path)
+	log.Debugf(c, "parsed id clt %v, vst %v from %v", cltidstr, vstidstr, r.URL.Path)
 
 	if cltidstr == "" {
-		c.Errorf("cltid is missing for update request: path %v",
+		log.Errorf(c, "cltid is missing for update request: path %v",
 			r.URL.Path)
 		http.Error(w,
 			fmt.Sprintf("id is missing in path for update request %v", r.URL.Path),
@@ -608,7 +610,7 @@ func editvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	}
 
 	if vstidstr == "" {
-		c.Errorf("vstid is missing for update request: path %v",
+		log.Errorf(c, "vstid is missing for update request: path %v",
 			r.URL.Path)
 		http.Error(w,
 			fmt.Sprintf("id is missing in path for update request %v", r.URL.Path),
@@ -618,7 +620,7 @@ func editvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 
 	cltid, err := strconv.ParseInt(cltidstr, 10, 64)
 	if err != nil {
-		c.Errorf("unable to parse id %v as int64: %v", cltid, err.Error())
+		log.Errorf(c, "unable to parse id %v as int64: %v", cltid, err.Error())
 		http.Error(w,
 			fmt.Sprintf("unable to parse id %v as int64: %v", cltid,
 				err.Error()),
@@ -628,7 +630,7 @@ func editvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 
 	vstid, err := strconv.ParseInt(vstidstr, 10, 64)
 	if err != nil {
-		c.Errorf("unable to parse vst id %v as int64: %v", vstid, err.Error())
+		log.Errorf(c, "unable to parse vst id %v as int64: %v", vstid, err.Error())
 		http.Error(w,
 			fmt.Sprintf("unable to parse id %v as int64: %v", vstid,
 				err.Error()),
@@ -688,7 +690,7 @@ func editvisitpage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func edituserspage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func edituserspage(c context.Context, w http.ResponseWriter, r *http.Request) {
 	if !webuserOK(c, w, r) {
 		return
 	}
@@ -733,7 +735,7 @@ func edituserspage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	c.Infof("UserUpdates %v", updates)
+	log.Infof(c, "UserUpdates %v", updates)
 
 	data := struct {
 		U, LogoutUrl string
@@ -751,7 +753,7 @@ func edituserspage(c appengine.Context, w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func listvisitsinrangepage(c context.Context, w http.ResponseWriter, r *http.Request) {
 	if !webuserOK(c, w, r) {
 		return
 	}
@@ -759,7 +761,7 @@ func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.R
 	start := r.FormValue("startdate")
 	end := r.FormValue("enddate")
 	csv := r.FormValue("csv")
-	c.Infof("looking for visits between %v and %v; csv=%v", start, end, csv)
+	log.Infof(c, "looking for visits between %v and %v; csv=%v", start, end, csv)
 
 	u := user.Current(c)
 
@@ -776,7 +778,7 @@ func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.R
 
 	cltmap := map[int64]string{}
 
-	c.Infof("got ids %v", keys)
+	log.Infof(c, "got ids %v", keys)
 	visitrecs := make([]visitrec, len(keys))
 	for i, vst := range visits {
 		visitrecs[i].Visit = vst
@@ -786,7 +788,7 @@ func listvisitsinrangepage(c appengine.Context, w http.ResponseWriter, r *http.R
 		var clt client
 		err = datastore.Get(c, cltkey, &clt)
 		if err != nil {
-			c.Warningf("unable to retrieve client with key %v for visit with key %v",
+			log.Warningf(c, "unable to retrieve client with key %v for visit with key %v",
 				cltkey.String(), keys[i].String())
 		}
 		cltmap[visitrecs[i].ClientId] = clt.Lastname + ", " + clt.Firstname
@@ -855,7 +857,7 @@ func (c cltvsts) Less(i, j int) bool {
 	return strings.ToLower(c[i].Name) < strings.ToLower(c[j].Name)
 }
 
-func listvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func listvisitsinrangebyclientpage(c context.Context, w http.ResponseWriter, r *http.Request) {
 	if !webuserOK(c, w, r) {
 		return
 	}
@@ -863,7 +865,7 @@ func listvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWriter, r
 	start := r.FormValue("startdate")
 	end := r.FormValue("enddate")
 	csv := r.FormValue("csv")
-	c.Infof("looking for visits between %v and %v; csv=%v", start, end, csv)
+	log.Infof(c, "looking for visits between %v and %v; csv=%v", start, end, csv)
 
 	u := user.Current(c)
 
@@ -879,7 +881,7 @@ func listvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWriter, r
 
 	cltmap := map[int64]*vstsbyclt{}
 
-	c.Infof("got ids %v", keys)
+	log.Infof(c, "got ids %v", keys)
 	visitrecs := make([]visitrec, len(keys))
 	for i, vst := range visits {
 		visitrecs[i].Visit = vst
@@ -889,13 +891,13 @@ func listvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWriter, r
 		var clt client
 		err = datastore.Get(c, cltkey, &clt)
 		if err != nil {
-			c.Warningf("unable to retrieve client with key %v for visit with key %v",
+			log.Warningf(c, "unable to retrieve client with key %v for visit with key %v",
 				cltkey.String(), keys[i].String())
 		}
 
 		var rec *vstsbyclt
 		rec, ok := cltmap[visitrecs[i].ClientId]
-		c.Debugf("rec=%p/%v, ok=%v, cltmap=%v", rec, rec, ok, cltmap)
+		log.Debugf(c, "rec=%p/%v, ok=%v, cltmap=%v", rec, rec, ok, cltmap)
 		if !ok {
 			rec = new(vstsbyclt)
 			rec.ClientId = visitrecs[i].ClientId
@@ -903,19 +905,19 @@ func listvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWriter, r
 			cltmap[visitrecs[i].ClientId] = rec
 		}
 		rec.Visits = append(rec.Visits, vst)
-		c.Debugf("rec=%v, cltmap=%v", rec, cltmap)
+		log.Debugf(c, "rec=%v, cltmap=%v", rec, cltmap)
 	}
 
-	c.Debugf("cltmao=%v", cltmap)
+	log.Debugf(c, "cltmao=%v", cltmap)
 	var cv cltvsts
 	for _, clt := range cltmap {
 		sort.Sort(clt.Visits)
 		cv = append(cv, *clt)
-		c.Debugf("appended to cltmap")
+		log.Debugf(c, "appended to cltmap")
 	}
-	c.Debugf("unsorted: cv=%v", cv)
+	log.Debugf(c, "unsorted: cv=%v", cv)
 	sort.Sort(cv)
-	c.Debugf("sorted: cv=%v", cv)
+	log.Debugf(c, "sorted: cv=%v", cv)
 
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
 
@@ -968,7 +970,7 @@ func (f families) Less(i, j int) bool {
 	return strings.ToLower(f[i].Name) < strings.ToLower(f[j].Name)
 }
 
-func listdedupedvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func listdedupedvisitsinrangebyclientpage(c context.Context, w http.ResponseWriter, r *http.Request) {
 	if !webuserOK(c, w, r) {
 		return
 	}
@@ -976,7 +978,7 @@ func listdedupedvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWr
 	start := r.FormValue("startdate")
 	end := r.FormValue("enddate")
 	csv := r.FormValue("csv")
-	c.Infof("looking for visits between %v and %v; csv=%v", start, end, csv)
+	log.Infof(c, "looking for visits between %v and %v; csv=%v", start, end, csv)
 
 	u := user.Current(c)
 
@@ -994,39 +996,39 @@ func listdedupedvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWr
 
 	var sumAdults, sumSeniors, sumMinors, sumFamSize int
 
-	c.Debugf("got ids %v", keys)
+	log.Debugf(c, "got ids %v", keys)
 	for _, k := range keys {
 		cltkey := k.Parent()
 		cltId := cltkey.IntID()
 
 		var rec *family
 		rec, ok := fammap[cltId]
-		c.Debugf("rec=%p/%v, ok=%v, fammap=%v", rec, rec, ok, fammap)
+		log.Debugf(c, "rec=%p/%v, ok=%v, fammap=%v", rec, rec, ok, fammap)
 		if !ok {
 			rec = new(family)
 			rec.Id = cltId
 			var clt client = *new(client)
 			err = datastore.Get(c, cltkey, &clt)
 			if err != nil {
-				c.Warningf("unable to retrieve client with key %v for visit with key %v",
+				log.Warningf(c, "unable to retrieve client with key %v for visit with key %v",
 					cltkey.String(), k.String())
 				continue
 			}
 			rec.Name = clt.Lastname + `, ` + clt.Firstname
 			rec.Adults, err = numAdults(clt)
 			if err != nil {
-				c.Warningf("error getting numAdults for clt %v: %v", clt, err)
+				log.Warningf(c, "error getting numAdults for clt %v: %v", clt, err)
 				rec.Adults = 0
 			}
 			rec.Seniors, err = numSeniors(clt)
 			if err != nil {
-				c.Warningf("error getting numSeniors for clt %v: %v", clt, err)
+				log.Warningf(c, "error getting numSeniors for clt %v: %v", clt, err)
 				rec.Seniors = 0
 			}
 			rec.Minors = numMinors(clt.Fammbrs)
 			rec.FamilySize, err = famSize(clt)
 			if err != nil {
-				c.Warningf("error getting famSize for clt %v: %v", clt, err)
+				log.Warningf(c, "error getting famSize for clt %v: %v", clt, err)
 				rec.Seniors = 0
 			}
 
@@ -1036,18 +1038,18 @@ func listdedupedvisitsinrangebyclientpage(c appengine.Context, w http.ResponseWr
 			sumMinors += rec.Minors
 			sumFamSize += rec.FamilySize
 		}
-		c.Debugf("rec=%v, fammap=%v", rec, fammap)
+		log.Debugf(c, "rec=%v, fammap=%v", rec, fammap)
 	}
 
-	c.Debugf("fammap=%v", fammap)
+	log.Debugf(c, "fammap=%v", fammap)
 	var cv families
 	for _, f := range fammap {
 		cv = append(cv, *f)
-		c.Debugf("appended to fammap")
+		log.Debugf(c, "appended to fammap")
 	}
-	c.Debugf("unsorted: cv=%v", cv)
+	log.Debugf(c, "unsorted: cv=%v", cv)
 	sort.Sort(cv)
-	c.Debugf("sorted: cv=%v", cv)
+	log.Debugf(c, "sorted: cv=%v", cv)
 
 	l, _ := user.LogoutURL(c, "http://www.svdpsm.org/")
 

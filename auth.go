@@ -2,12 +2,12 @@ package frederic
 
 import (
 	"fmt"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/user"
 	"os"
 	"strings"
+
+	"appengine"
+	"appengine/datastore"
+	"appengine/user"
 )
 
 type appuser struct {
@@ -16,19 +16,19 @@ type appuser struct {
 	//multi-conference support?
 }
 
-func userauthenticated(c context.Context) bool {
+func userauthenticated(c appengine.Context) bool {
 	u := user.Current(c)
 	return u != nil
 }
 
-func userauthorized(c context.Context, email string) (bool, error) {
+func userauthorized(c appengine.Context, email string) (bool, error) {
 	if v := os.Getenv("BOOTSTRAP_USER"); v != "" && v == email {
 		return true, nil
 	}
 	lc := strings.ToLower(email)
 	q := datastore.NewQuery("SVDPUser").Filter("Email=", lc)
 	cnt, err := q.Count(c)
-	log.Debugf(c, "count for user %v = %v", lc, cnt)
+	c.Debugf("count for user %v = %v", lc, cnt)
 	if err != nil {
 		return false, err
 	}
@@ -38,7 +38,7 @@ func userauthorized(c context.Context, email string) (bool, error) {
 	return false, nil
 }
 
-func useradmin(c context.Context, email string) (bool, error) {
+func useradmin(c appengine.Context, email string) (bool, error) {
 	if v := os.Getenv("BOOTSTRAP_USER"); v != "" && v == email {
 		// bootstrap user is admin by definition
 		return true, nil
@@ -46,7 +46,7 @@ func useradmin(c context.Context, email string) (bool, error) {
 	u := []appuser{}
 	q := datastore.NewQuery("SVDPUser").Filter("Email=", email)
 	_, err := q.GetAll(c, &u)
-	log.Debugf(c, "user %v", u)
+	c.Debugf("user %v", u)
 	if err != nil {
 		return false, err
 	}

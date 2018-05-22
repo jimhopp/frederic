@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/user"
 	"net/http"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"appengine"
+	"appengine/datastore"
+	"appengine/user"
 )
 
 var ethnicities = map[string]bool{
@@ -32,7 +32,7 @@ type useredit struct {
 	DeletedIds []int64
 }
 
-func apiuserOK(c context.Context, w http.ResponseWriter) bool {
+func apiuserOK(c appengine.Context, w http.ResponseWriter) bool {
 	if !userauthenticated(c) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return false
@@ -45,7 +45,7 @@ func apiuserOK(c context.Context, w http.ResponseWriter) bool {
 	return true
 }
 
-func dumpValues(c context.Context, a, b interface{}) {
+func dumpValues(c appengine.Context, a, b interface{}) {
 	va := reflect.ValueOf(a)
 	if va.Kind() == reflect.Ptr {
 		va = va.Elem()
@@ -69,24 +69,24 @@ func dumpValues(c context.Context, a, b interface{}) {
 		} else if ft.Type.Kind() == reflect.Slice {
 			ma := fa.Len()
 			mb := fb.Len()
-			log.Debugf(c, "slice: a has len %v, b has len %v", ma, mb)
+			c.Debugf("slice: a has len %v, b has len %v", ma, mb)
 			//slice items they both have
 			for j := 0; j < ma && j < mb; j++ {
 				vas := fa.Index(j)
 				vbs := fb.Index(j)
-				log.Debugf(c, "%v: %v (%v)", j, vas, vas.Kind())
-				log.Debugf(c, "%v: %v (%v)", j, vbs, vbs.Kind())
+				c.Debugf("%v: %v (%v)", j, vas, vas.Kind())
+				c.Debugf("%v: %v (%v)", j, vbs, vbs.Kind())
 				if vas.Kind() == reflect.Struct {
 					dumpValues(c, vas.Interface(), vbs.Interface())
 				}
 			}
 			//slice items in a but not b
 			for j := mb; j < ma; j++ {
-				log.Debugf(c, "a slice is bigger than b: j=%v", j)
+				c.Debugf("a slice is bigger than b: j=%v", j)
 				vas := fa.Index(j)
 				empty, err := makeEmptyRec(vas.Interface())
 				if err != nil {
-					log.Errorf(c, "dumpValues: got error trying to make empty rec: %v", err)
+					c.Errorf("dumpValues: got error trying to make empty rec: %v", err)
 					break
 				}
 				if vas.Kind() == reflect.Struct {
@@ -95,11 +95,11 @@ func dumpValues(c context.Context, a, b interface{}) {
 			}
 			//slice items in b but not in a
 			for j := ma; j < mb; j++ {
-				log.Debugf(c, "b slice is bigger than a: j=%v", j)
+				c.Debugf("b slice is bigger than a: j=%v", j)
 				vbs := fb.Index(j)
 				empty, err := makeEmptyRec(vbs.Interface())
 				if err != nil {
-					log.Errorf(c, "dumpValues: got error trying to make empty rec: %v", err)
+					c.Errorf("dumpValues: got error trying to make empty rec: %v", err)
 					break
 				}
 				if vbs.Kind() == reflect.Struct {
@@ -107,12 +107,12 @@ func dumpValues(c context.Context, a, b interface{}) {
 				}
 			}
 		} else if !reflect.DeepEqual(fa.Interface(), fb.Interface()) {
-			log.Infof(c, "Changed value for %v from %v to %v", ft.Name, fb, fa)
+			c.Infof("Changed value for %v from %v to %v", ft.Name, fb, fa)
 		}
 	}
 }
 
-func addclient(c context.Context, w http.ResponseWriter, r *http.Request) {
+func addclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !apiuserOK(c, w) {
 		return
 	}
@@ -121,9 +121,9 @@ func addclient(c context.Context, w http.ResponseWriter, r *http.Request) {
 	body := make([]byte, r.ContentLength)
 	_, err := r.Body.Read(body)
 	err = json.Unmarshal(body, clt)
-	log.Infof(c, "addclient: got %v\n", string(body))
+	c.Infof("addclient: got %v\n", string(body))
 	if err != nil {
-		log.Errorf(c, "unmarshaling error:%v\n", err)
+		c.Errorf("unmarshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -165,12 +165,12 @@ func addclient(c context.Context, w http.ResponseWriter, r *http.Request) {
 			clt.Fammbrs, clt.Financials},
 	}
 	b, err := json.Marshal(newrec)
-	log.Infof(c, "returning %v\n", string(b))
+	c.Infof("returning %v\n", string(b))
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprint(w, string(b))
 }
 
-func editclient(c context.Context, w http.ResponseWriter, r *http.Request) {
+func editclient(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !apiuserOK(c, w) {
 		return
 	}
@@ -179,9 +179,9 @@ func editclient(c context.Context, w http.ResponseWriter, r *http.Request) {
 	body := make([]byte, r.ContentLength)
 	_, err := r.Body.Read(body)
 	err = json.Unmarshal(body, clt)
-	log.Infof(c, "api/editclient: got %v\n", string(body))
+	c.Infof("api/editclient: got %v\n", string(body))
 	if err != nil {
-		log.Errorf(c, "unmarshaling error:%v\n", err)
+		c.Errorf("unmarshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -202,10 +202,10 @@ func editclient(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	re, err := regexp.Compile("[0-9]+")
 	idstr := re.FindString(r.URL.Path)
-	log.Debugf(c, "parsed id %v from %v", idstr, r.URL.Path)
+	c.Debugf("parsed id %v from %v", idstr, r.URL.Path)
 
 	if idstr == "" {
-		log.Errorf(c, "id is missing for update request: path %v, data %v",
+		c.Errorf("id is missing for update request: path %v, data %v",
 			r.URL.Path, string(body))
 		http.Error(w,
 			fmt.Sprintf("id is missing in path for update request %v", string(body)),
@@ -215,7 +215,7 @@ func editclient(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.ParseInt(idstr, 10, 64)
 	if err != nil {
-		log.Errorf(c, "unable to parse id %v as int64: %v", id, err.Error())
+		c.Errorf("unable to parse id %v as int64: %v", id, err.Error())
 		http.Error(w,
 			fmt.Sprintf("unable to parse id %v as int64: %v", id,
 				err.Error()),
@@ -225,7 +225,7 @@ func editclient(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	key, err := putRecord(c, "SVDPClient", id, nil, clt)
 	if err != nil {
-		log.Errorf(c, "error on putRecord: :%v\n", err)
+		c.Errorf("error on putRecord: :%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -243,38 +243,38 @@ func editclient(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	b, err := json.Marshal(newrec)
 	if err != nil {
-		log.Errorf(c, "marshaling error:%v\n", err)
+		c.Errorf("marshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Infof(c, "returning %v\n", string(b))
+	c.Infof("returning %v\n", string(b))
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(b))
 }
 
-func putRecord(c context.Context, entity string, id int64, parentKey *datastore.Key, newrec interface{}) (key *datastore.Key, err error) {
+func putRecord(c appengine.Context, entity string, id int64, parentKey *datastore.Key, newrec interface{}) (key *datastore.Key, err error) {
 
-	log.Debugf(c, "putRecord: entity %v, id %d, parent %v, newrec %v (%T)", entity, id, parentKey, newrec, newrec)
+	c.Debugf("putRecord: entity %v, id %d, parent %v, newrec %v (%T)", entity, id, parentKey, newrec, newrec)
 	var oldrec interface{}
 
 	oldrec, err = makeEmptyRec(newrec)
 	if err != nil {
-		log.Errorf(c, "error making oldrec: %v", err)
+		c.Errorf("error making oldrec: %v", err)
 		return nil, err
 	}
-	log.Debugf(c, "oldrec: %v", oldrec)
+	c.Debugf("oldrec: %v", oldrec)
 	var ikey *datastore.Key
 	if id == 0 {
 		ikey = datastore.NewIncompleteKey(c, entity, parentKey)
 	} else {
 		ikey = datastore.NewKey(c, entity, "", id, parentKey)
 	}
-	log.Debugf(c, "putRecord: key=%v", ikey)
+	c.Debugf("putRecord: key=%v", ikey)
 
 	if id != 0 {
 		err = datastore.Get(c, ikey, oldrec)
 		if err != nil {
-			log.Errorf(c, "datastore error getting oldrec: :%v\n", err)
+			c.Errorf("datastore error getting oldrec: :%v\n", err)
 			return nil, err
 		}
 	}
@@ -282,7 +282,7 @@ func putRecord(c context.Context, entity string, id int64, parentKey *datastore.
 	dumpValues(c, newrec, oldrec)
 	key, err = datastore.Put(c, ikey, newrec)
 	if err != nil {
-		log.Errorf(c, "datastore error on Put: :%v\n", err)
+		c.Errorf("datastore error on Put: :%v\n", err)
 		return nil, err
 	}
 	return key, nil
@@ -368,7 +368,7 @@ func checkVisitRequired(vst *visit) error {
 	return nil
 }
 
-func visitrouter(c context.Context, w http.ResponseWriter, r *http.Request) {
+func visitrouter(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	/*
 	 /api/visit/123 goes to addvisit,
 	 /api/visit/123/456/edit goes to editvisit
@@ -379,18 +379,18 @@ func visitrouter(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	re, err := regexp.Compile(`^/api/visit/([0-9]+)(/[0-9]+/edit)?$`)
 	if err != nil {
-		log.Debugf(c, "failed to create expr: %v", err.Error())
+		c.Debugf("failed to create expr: %v", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	matches := re.FindSubmatch([]byte(r.URL.Path))
 	if matches != nil {
-		log.Debugf(c, "found %v matches in %v", len(matches), r.URL.Path)
+		c.Debugf("found %v matches in %v", len(matches), r.URL.Path)
 		for i, s := range matches {
-			log.Debugf(c, "%v: %v", i, string(s))
+			c.Debugf("%v: %v", i, string(s))
 		}
 	} else {
-		log.Debugf(c, "no matches in %v", r.URL.Path)
+		c.Debugf("no matches in %v", r.URL.Path)
 		http.Error(w, "no matches in url path", http.StatusBadRequest)
 		return
 	}
@@ -401,7 +401,7 @@ func visitrouter(c context.Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func addvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
+func addvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !apiuserOK(c, w) {
 		return
 	}
@@ -410,9 +410,9 @@ func addvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 	body := make([]byte, r.ContentLength)
 	_, err := r.Body.Read(body)
 	err = json.Unmarshal(body, vst)
-	log.Infof(c, "api/addvisit: got %v\n", string(body))
+	c.Infof("api/addvisit: got %v\n", string(body))
 	if err != nil {
-		log.Errorf(c, "unmarshaling error:%v\n", err)
+		c.Errorf("unmarshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -424,10 +424,10 @@ func addvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	re, err := regexp.Compile("[0-9]+")
 	idstr := re.FindString(r.URL.Path)
-	log.Debugf(c, "parsed id %v from %v", idstr, r.URL.Path)
+	c.Debugf("parsed id %v from %v", idstr, r.URL.Path)
 
 	if idstr == "" {
-		log.Errorf(c, "id is missing for add visit request: path %v, data %v",
+		c.Errorf("id is missing for add visit request: path %v, data %v",
 			r.URL.Path, string(body))
 		http.Error(w,
 			fmt.Sprintf("id is missing in path for add visit request %v", string(body)),
@@ -437,7 +437,7 @@ func addvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.ParseInt(idstr, 10, 64)
 	if err != nil {
-		log.Errorf(c, "unable to parse id %v as int64: %v", id, err.Error())
+		c.Errorf("unable to parse id %v as int64: %v", id, err.Error())
 		http.Error(w,
 			fmt.Sprintf("unable to parse id %v as int64: %v", id,
 				err.Error()),
@@ -447,7 +447,7 @@ func addvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	if len(vst.Visitdate) > 0 {
 		if _, err = time.Parse("2006-01-02", vst.Visitdate); err != nil {
-			log.Errorf(c, "unable to parse visit date %v, err %v",
+			c.Errorf("unable to parse visit date %v, err %v",
 				vst.Visitdate, err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -456,7 +456,7 @@ func addvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	key, err := putRecord(c, "SVDPClientVisit", 0, datastore.NewKey(c, "SVDPClient", "", id, nil), vst)
 	if err != nil {
-		log.Errorf(c, "datastore error on Put: :%v\n", err)
+		c.Errorf("datastore error on Put: :%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -468,7 +468,7 @@ func addvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 	ikey := datastore.NewIncompleteKey(c, "SVDPUpdate", key)
 	_, err = datastore.Put(c, ikey, created)
 	if err != nil {
-		log.Errorf(c, "datastore error on Put: :%v\n", err)
+		c.Errorf("datastore error on Put: :%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -477,16 +477,16 @@ func addvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	b, err := json.Marshal(newrec)
 	if err != nil {
-		log.Errorf(c, "marshaling error:%v\n", err)
+		c.Errorf("marshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Infof(c, "returning %v\n", string(b))
+	c.Infof("returning %v\n", string(b))
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(b))
 }
 
-func editvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
+func editvisit(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !apiuserOK(c, w) {
 		return
 	}
@@ -495,9 +495,9 @@ func editvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 	body := make([]byte, r.ContentLength)
 	_, err := r.Body.Read(body)
 	err = json.Unmarshal(body, vst)
-	log.Infof(c, "api/editvisit: got %v\n", string(body))
+	c.Infof("api/editvisit: got %v\n", string(body))
 	if err != nil {
-		log.Errorf(c, "unmarshaling error:%v\n", err)
+		c.Errorf("unmarshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -518,10 +518,10 @@ func editvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 	cltidstr := string(matches[1])
 	vstidstr := string(matches[2])
 
-	log.Debugf(c, "parsed id clt %v, vst %v from %v", cltidstr, vstidstr, r.URL.Path)
+	c.Debugf("parsed id clt %v, vst %v from %v", cltidstr, vstidstr, r.URL.Path)
 
 	if cltidstr == "" {
-		log.Errorf(c, "cltid is missing for update request: path %v, data %v",
+		c.Errorf("cltid is missing for update request: path %v, data %v",
 			r.URL.Path, string(body))
 		http.Error(w,
 			fmt.Sprintf("id is missing in path for update request %v", string(body)),
@@ -530,7 +530,7 @@ func editvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	if vstidstr == "" {
-		log.Errorf(c, "vstid is missing for update request: path %v, data %v",
+		c.Errorf("vstid is missing for update request: path %v, data %v",
 			r.URL.Path, string(body))
 		http.Error(w,
 			fmt.Sprintf("id is missing in path for update request %v", string(body)),
@@ -540,7 +540,7 @@ func editvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	cltid, err := strconv.ParseInt(cltidstr, 10, 64)
 	if err != nil {
-		log.Errorf(c, "unable to parse id %v as int64: %v", cltid, err.Error())
+		c.Errorf("unable to parse id %v as int64: %v", cltid, err.Error())
 		http.Error(w,
 			fmt.Sprintf("unable to parse id %v as int64: %v", cltid,
 				err.Error()),
@@ -550,7 +550,7 @@ func editvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	vstid, err := strconv.ParseInt(vstidstr, 10, 64)
 	if err != nil {
-		log.Errorf(c, "unable to parse vst id %v as int64: %v", vstid, err.Error())
+		c.Errorf("unable to parse vst id %v as int64: %v", vstid, err.Error())
 		http.Error(w,
 			fmt.Sprintf("unable to parse id %v as int64: %v", vstid,
 				err.Error()),
@@ -560,7 +560,7 @@ func editvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	key, err := putRecord(c, "SVDPClientVisit", vstid, datastore.NewKey(c, "SVDPClient", "", cltid, nil), vst)
 	if err != nil {
-		log.Errorf(c, "datastore error on putRecord: :%v\n", err)
+		c.Errorf("datastore error on putRecord: :%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -572,7 +572,7 @@ func editvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 	ikey := datastore.NewIncompleteKey(c, "SVDPUpdate", key)
 	_, err = datastore.Put(c, ikey, latest)
 	if err != nil {
-		log.Errorf(c, "datastore error on Put: :%v\n", err)
+		c.Errorf("datastore error on Put: :%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -581,16 +581,16 @@ func editvisit(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	b, err := json.Marshal(newrec)
 	if err != nil {
-		log.Errorf(c, "marshaling error:%v\n", err)
+		c.Errorf("marshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Infof(c, "returning %v\n", string(b))
+	c.Infof("returning %v\n", string(b))
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(b))
 }
 
-func getallclients(c context.Context, w http.ResponseWriter, r *http.Request) {
+func getallclients(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !apiuserOK(c, w) {
 		return
 	}
@@ -602,7 +602,7 @@ func getallclients(c context.Context, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Debugf(c, "getallclients: got keys %v\n", ids)
+	c.Debugf("getallclients: got keys %v\n", ids)
 	w.WriteHeader(http.StatusOK)
 
 	clientrecs := make([]clientrec, len(clients))
@@ -616,7 +616,7 @@ func getallclients(c context.Context, w http.ResponseWriter, r *http.Request) {
 			clients[i].Adultmales, clients[i].Adultfemales,
 			clients[i].Fammbrs, clients[i].Financials}}
 	}
-	log.Debugf(c, "getallclients: clientrecs = %v\n", clientrecs)
+	c.Debugf("getallclients: clientrecs = %v\n", clientrecs)
 	b, err := json.Marshal(clientrecs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -626,17 +626,17 @@ func getallclients(c context.Context, w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(b))
 }
 
-func getallvisits(c context.Context, w http.ResponseWriter, r *http.Request) {
+func getallvisits(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !apiuserOK(c, w) {
 		return
 	}
 
 	re, err := regexp.Compile("[0-9]+")
 	idstr := re.FindString(r.URL.Path)
-	log.Debugf(c, "parsed id %v from %v", idstr, r.URL.Path)
+	c.Debugf("parsed id %v from %v", idstr, r.URL.Path)
 
 	if idstr == "" {
-		log.Errorf(c, "id is missing for request: path %v", r.URL.Path)
+		c.Errorf("id is missing for request: path %v", r.URL.Path)
 		http.Error(w,
 			fmt.Sprintf("id is missing in path %v", r.URL.Path),
 			http.StatusBadRequest)
@@ -645,7 +645,7 @@ func getallvisits(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.ParseInt(idstr, 10, 64)
 	if err != nil {
-		log.Errorf(c, "unable to parse id %v as int64: %v", id, err.Error())
+		c.Errorf("unable to parse id %v as int64: %v", id, err.Error())
 		http.Error(w,
 			fmt.Sprintf("unable to parse id %v as int64: %v", id,
 				err.Error()),
@@ -660,7 +660,7 @@ func getallvisits(c context.Context, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Debugf(c, "getallvisits: got keys %v\n", ids)
+	c.Debugf("getallvisits: got keys %v\n", ids)
 	w.WriteHeader(http.StatusOK)
 
 	visitrecs := make([]visitrec, len(visits))
@@ -676,7 +676,7 @@ func getallvisits(c context.Context, w http.ResponseWriter, r *http.Request) {
 				visits[i].Vouchersclothing, visits[i].Vouchersfurniture,
 				visits[i].Vouchersother, visits[i].Comment}}
 	}
-	log.Debugf(c, "getallclients: visitrecs = %v\n", visitrecs)
+	c.Debugf("getallclients: visitrecs = %v\n", visitrecs)
 	b, err := json.Marshal(visitrecs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -686,7 +686,7 @@ func getallvisits(c context.Context, w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(b))
 }
 
-func getvisitsinrange(c context.Context, w http.ResponseWriter, r *http.Request) {
+func getvisitsinrange(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !apiuserOK(c, w) {
 		return
 	}
@@ -698,7 +698,7 @@ func getvisitsinrange(c context.Context, w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Debugf(c, "getallvisits: got keys %v\n", ids)
+	c.Debugf("getallvisits: got keys %v\n", ids)
 	w.WriteHeader(http.StatusOK)
 
 	b, err := json.Marshal(visits)
@@ -710,7 +710,7 @@ func getvisitsinrange(c context.Context, w http.ResponseWriter, r *http.Request)
 	fmt.Fprint(w, string(b))
 }
 
-func editusers(c context.Context, w http.ResponseWriter, r *http.Request) {
+func editusers(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !apiuserOK(c, w) {
 		return
 	}
@@ -718,7 +718,7 @@ func editusers(c context.Context, w http.ResponseWriter, r *http.Request) {
 	u := user.Current(c)
 	admin, err := useradmin(c, u.Email)
 	if !admin {
-		log.Errorf(c, "user %v is not admin", u.Email)
+		c.Errorf("user %v is not admin", u.Email)
 		http.Error(w, "Sorry, you must be an admin user and you're not",
 			http.StatusForbidden)
 		return
@@ -729,16 +729,16 @@ func editusers(c context.Context, w http.ResponseWriter, r *http.Request) {
 	body := make([]byte, r.ContentLength)
 	_, err = r.Body.Read(body)
 	err = json.Unmarshal(body, &b1)
-	log.Infof(c, "api/editusers: got %v\n", string(body))
-	log.Debugf(c, "api/editusers: unmarshaled into %v\n", b1)
+	c.Infof("api/editusers: got %v\n", string(body))
+	c.Debugf("api/editusers: unmarshaled into %v\n", b1)
 	if err != nil {
-		log.Errorf(c, "unmarshaling error:%v\n", err)
+		c.Errorf("unmarshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if len(b1.Ids) < len(b1.Aus) {
-		log.Errorf(c, "%v ids but %v users", len(b1.Ids), len(b1.Aus))
+		c.Errorf("%v ids but %v users", len(b1.Ids), len(b1.Aus))
 		http.Error(w,
 			fmt.Sprintf("Must have as many Ids as Aus (sent %v  Ids but %v Aus)", len(b1.Ids), len(b1.Aus)),
 			http.StatusBadRequest)
@@ -754,7 +754,7 @@ func editusers(c context.Context, w http.ResponseWriter, r *http.Request) {
 
 	newkeys, err := datastore.PutMulti(c, keys, b1.Aus)
 	if err != nil {
-		log.Errorf(c, "datastore error on PutMulti: :%v\n", err)
+		c.Errorf("datastore error on PutMulti: :%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -770,7 +770,7 @@ func editusers(c context.Context, w http.ResponseWriter, r *http.Request) {
 				k, nil)
 		}
 		if err = datastore.DeleteMulti(c, deletedkeys); err != nil {
-			log.Errorf(c, "error deleting users: %v", err)
+			c.Errorf("error deleting users: %v", err)
 		}
 	}
 
@@ -781,23 +781,23 @@ func editusers(c context.Context, w http.ResponseWriter, r *http.Request) {
 	ikey := datastore.NewIncompleteKey(c, "SVDPUserUpdate", nil)
 	_, err = datastore.Put(c, ikey, latest)
 	if err != nil {
-		log.Errorf(c, "datastore error: :%v\n", err)
+		c.Errorf("datastore error: :%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	nb, err := json.Marshal(&b1)
 	if err != nil {
-		log.Errorf(c, "marshaling error:%v\n", err)
+		c.Errorf("marshaling error:%v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Infof(c, "returning %v\n", string(nb))
+	c.Infof("returning %v\n", string(nb))
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(nb))
 }
 
-func getallusers(c context.Context, w http.ResponseWriter, r *http.Request) {
+func getallusers(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	if !apiuserOK(c, w) {
 		return
 	}
@@ -810,7 +810,7 @@ func getallusers(c context.Context, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Debugf(c, "getallusers: got keys %v\n", keys)
+	c.Debugf("getallusers: got keys %v\n", keys)
 
 	var resp useredit
 	resp.Aus = aus
@@ -819,7 +819,7 @@ func getallusers(c context.Context, w http.ResponseWriter, r *http.Request) {
 		resp.Ids[i] = keys[i].IntID()
 	}
 
-	log.Debugf(c, "getallusers: useredit = %v", resp)
+	c.Debugf("getallusers: useredit = %v", resp)
 	b, err := json.Marshal(resp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

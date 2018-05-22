@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	log_ "log"
+	"log"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -13,17 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/aetest"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/user"
+	"appengine"
+	"appengine/aetest"
+	"appengine/user"
 )
 
 type EndpointTest struct {
 	url           string
 	humanReadable bool
-	handler       func(context.Context, http.ResponseWriter, *http.Request)
+	handler       func(appengine.Context, http.ResponseWriter, *http.Request)
 	expected      int
 }
 
@@ -1051,7 +1049,7 @@ func TestListVisitsInRange(t *testing.T) {
 	cltids := make([]int64, len(newclients))
 	for i, newclient := range newclients {
 		cltids[i], err = addclienttodb(newclient, inst)
-		log_.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
 		if err != nil {
 			t.Fatalf("unable to add client: %v", err)
 		}
@@ -1160,7 +1158,7 @@ func TestDownloadVisitsInRange(t *testing.T) {
 	cltids := make([]int64, len(newclients))
 	for i, newclient := range newclients {
 		cltids[i], err = addclienttodb(newclient, inst)
-		log_.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
 		if err != nil {
 			t.Fatalf("unable to add client: %v", err)
 		}
@@ -1239,7 +1237,7 @@ func TestDownloadVisitsInRange(t *testing.T) {
 	}
 
 	headers := w.HeaderMap
-	log.Infof(c, "headers=%v", headers)
+	c.Infof("headers=%v", headers)
 	if headers["Content-Type"][0] != "text/csv" {
 		t.Errorf("expected Content-Type to contain text/csv but it is %v", headers)
 	}
@@ -1295,7 +1293,7 @@ func TestListVisitsByClient(t *testing.T) {
 	cltids := make([]int64, len(newclients))
 	for i, newclient := range newclients {
 		cltids[i], err = addclienttodb(newclient, inst)
-		log_.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
 		if err != nil {
 			t.Fatalf("unable to add client: %v", err)
 		}
@@ -1404,7 +1402,7 @@ func TestDownloadVisitsByClientInRange(t *testing.T) {
 	cltids := make([]int64, len(newclients))
 	for i, newclient := range newclients {
 		cltids[i], err = addclienttodb(newclient, inst)
-		log_.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
 		if err != nil {
 			t.Fatalf("unable to add client: %v", err)
 		}
@@ -1483,7 +1481,7 @@ func TestDownloadVisitsByClientInRange(t *testing.T) {
 	}
 
 	headers := w.HeaderMap
-	log.Infof(c, "headers=%v", headers)
+	c.Infof("headers=%v", headers)
 	if headers["Content-Type"][0] != "text/csv" {
 		t.Errorf("expected Content-Type to contain text/csv but it is %v", headers)
 	}
@@ -1539,7 +1537,7 @@ func TestDedupedVisitsByClient(t *testing.T) {
 	cltids := make([]int64, len(newclients))
 	for i, newclient := range newclients {
 		cltids[i], err = addclienttodb(newclient, inst)
-		log_.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
 		if err != nil {
 			t.Fatalf("unable to add client: %v", err)
 		}
@@ -1646,7 +1644,7 @@ func TestDownloadDedupedVisitsByClient(t *testing.T) {
 	cltids := make([]int64, len(newclients))
 	for i, newclient := range newclients {
 		cltids[i], err = addclienttodb(newclient, inst)
-		log_.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
 		if err != nil {
 			t.Fatalf("unable to add client: %v", err)
 		}
@@ -1725,7 +1723,7 @@ func TestDownloadDedupedVisitsByClient(t *testing.T) {
 	}
 
 	headers := w.HeaderMap
-	log.Infof(c, "headers=%v", headers)
+	c.Infof("headers=%v", headers)
 	if headers["Content-Type"][0] != "text/csv" {
 		t.Errorf("expected Content-Type to contain text/csv but it is %v", headers)
 	}

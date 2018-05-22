@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	log_ "log"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,12 +15,10 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/net/context"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/aetest"
-	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/user"
+	"appengine"
+	"appengine/aetest"
+	"appengine/datastore"
+	"appengine/user"
 )
 
 func TestAddClient(t *testing.T) {
@@ -235,7 +233,7 @@ func TestGetAllClients(t *testing.T) {
 	id := make([]int64, 3)
 	for i := 0; i < len(newclients); i++ {
 		id[i], err = addclienttodb(newclients[i], inst)
-		log_.Printf("TestAllClients: got %v from addclienttodb\n", id)
+		log.Printf("TestAllClients: got %v from addclienttodb\n", id)
 		if err != nil {
 			t.Fatalf("unable to add client: %v", err)
 		}
@@ -297,7 +295,7 @@ func TestGetAllVisitsInRange(t *testing.T) {
 	cltids := make([]int64, len(newclients))
 	for i, newclient := range newclients {
 		cltids[i], err = addclienttodb(newclient, inst)
-		log_.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
+		log.Printf("TestAllVisits: got %v from addclienttodb\n", cltids[i])
 		if err != nil {
 			t.Fatalf("unable to add client: %v", err)
 		}
@@ -415,7 +413,7 @@ func TestGetAllVisits(t *testing.T) {
 
 	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
 	cltid, err := addclienttodb(newclient, inst)
-	log_.Printf("TestAllVisits: got %v from addclienttodb\n", cltid)
+	log.Printf("TestAllVisits: got %v from addclienttodb\n", cltid)
 	if err != nil {
 		t.Fatalf("unable to add client: %v", err)
 	}
@@ -509,7 +507,7 @@ func TestUpdateClient(t *testing.T) {
 
 	newclient := client{Firstname: "frederic", Lastname: "ozanam", Ethnicity: "W"}
 	id, err := addclienttodb(newclient, inst)
-	log_.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
 	if err != nil {
 		t.Fatalf("unable to add client: %v", err)
 	}
@@ -581,7 +579,7 @@ func TestVisitRouter(t *testing.T) {
 
 	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
 	id, err := addclienttodb(newclient, inst)
-	log_.Printf("TestVisitRouter: got %v from addclienttodb\n", id)
+	log.Printf("TestVisitRouter: got %v from addclienttodb\n", id)
 	if err != nil {
 		t.Fatalf("unable to add client: %v", err)
 	}
@@ -663,7 +661,7 @@ func TestAddVisit(t *testing.T) {
 
 	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
 	id, err := addclienttodb(newclient, inst)
-	log_.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
 	if err != nil {
 		t.Fatalf("unable to add client: %v", err)
 	}
@@ -742,7 +740,7 @@ func TestAddVisitMissingData(t *testing.T) {
 
 	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
 	id, err := addclienttodb(newclient, inst)
-	log_.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
 	if err != nil {
 		t.Fatalf("unable to add client: %v", err)
 	}
@@ -802,7 +800,7 @@ func TestEditVisit(t *testing.T) {
 
 	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
 	cltid, err := addclienttodb(newclient, inst)
-	log_.Printf("TestEditVisit: got %v from addclienttodb\n", cltid)
+	log.Printf("TestEditVisit: got %v from addclienttodb\n", cltid)
 	if err != nil {
 		t.Fatalf("unable to add client: %v", err)
 	}
@@ -954,7 +952,7 @@ func TestEditVisitMissingData(t *testing.T) {
 
 	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
 	cltid, err := addclienttodb(newclient, inst)
-	log_.Printf("TestEditVisit: got %v from addclienttodb\n", cltid)
+	log.Printf("TestEditVisit: got %v from addclienttodb\n", cltid)
 	if err != nil {
 		t.Fatalf("unable to add client: %v", err)
 	}
@@ -1072,7 +1070,7 @@ func TestUpdateInvalidData(t *testing.T) {
 
 	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
 	id, err := addclienttodb(newclient, inst)
-	log_.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
 	if err != nil {
 		t.Fatalf("unable to add client: %v", err)
 	}
@@ -1130,7 +1128,7 @@ func TestUpdateMissingData(t *testing.T) {
 
 	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
 	id, err := addclienttodb(newclient, inst)
-	log_.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
 	if err != nil {
 		t.Fatalf("unable to add client: %v", err)
 	}
@@ -1185,7 +1183,7 @@ func TestUpdateMissingId(t *testing.T) {
 
 	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
 	id, err := addclienttodb(newclient, inst)
-	log_.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
 	if err != nil {
 		t.Fatalf("unable to add client: %v", err)
 	}
@@ -1223,7 +1221,7 @@ func TestUpdateMalformedId(t *testing.T) {
 
 	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
 	id, err := addclienttodb(newclient, inst)
-	log_.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
+	log.Printf("TestUpdateClient: got %v from addclienttodb\n", id)
 	if err != nil {
 		t.Fatalf("unable to add client: %v", err)
 	}
@@ -1292,22 +1290,16 @@ func addclienttodb(clt client, inst aetest.Instance) (id int64, err error) {
 }
 
 func TestAuthorization(t *testing.T) {
-	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	c, err := aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {
-		t.Fatalf("Failed to create instance: %v", err)
+		t.Fatalf("Failed to create context: %v", err)
 	}
-	defer inst.Close()
+	defer c.Close()
 
 	err = os.Setenv("BOOTSTRAP_USER", "hello@example.org")
 	if err != nil {
 		t.Fatalf("failed to set BOOTSTRAP_USER: %v", err.Error())
 	}
-	req, err := inst.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
-
-	c := appengine.NewContext(req)
 
 	auth, err := userauthorized(c, "hello@example.org")
 	if err != nil {
@@ -1375,7 +1367,7 @@ func TestAddUsers(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body := w.Body.Bytes()
-	log.Infof(c, "got response %v", string(body))
+	c.Infof("got response %v", string(body))
 
 	var b2 useredit
 	err = json.Unmarshal(body, &b2)
@@ -1436,7 +1428,7 @@ func TestAddUsersMissingIds(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusBadRequest)
 	}
 	body := w.Body.Bytes()
-	log.Infof(c, "got response %v", string(body))
+	c.Infof("got response %v", string(body))
 
 }
 
@@ -1474,7 +1466,7 @@ func TestUsersNotCaseSensitive(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body := w.Body.Bytes()
-	log.Infof(c, "got response %v", string(body))
+	c.Infof("got response %v", string(body))
 
 	var b2 useredit
 	err = json.Unmarshal(body, &b2)
@@ -1524,7 +1516,7 @@ func TestEditUsers(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body := w.Body.Bytes()
-	log.Infof(c, "got response %v", string(body))
+	c.Infof("got response %v", string(body))
 
 	var b2 useredit
 	err = json.Unmarshal(body, &b2)
@@ -1554,7 +1546,7 @@ func TestEditUsers(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body1 := w.Body.Bytes()
-	log.Infof(c, "got response %v", string(body1))
+	c.Infof("got response %v", string(body1))
 
 	var b3 useredit
 	err = json.Unmarshal(body, &b3)
@@ -1645,7 +1637,7 @@ func TestDeleteUsers(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body := w.Body.Bytes()
-	log.Infof(c, "got response %v", string(body))
+	c.Infof("got response %v", string(body))
 
 	var b2 useredit
 	err = json.Unmarshal(body, &b2)
@@ -1683,7 +1675,7 @@ func TestDeleteUsers(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body1 := w.Body.Bytes()
-	log.Infof(c, "got response %v", string(body1))
+	c.Infof("got response %v", string(body1))
 
 	var b3 useredit
 	err = json.Unmarshal(body, &b3)
@@ -1735,7 +1727,7 @@ func TestGetUsers(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body := w.Body.Bytes()
-	log.Infof(c, "got response %v", string(body))
+	c.Infof("got response %v", string(body))
 
 	req1, err := inst.NewRequest("GET", "/api/clients", nil)
 	if err != nil {
@@ -1756,7 +1748,7 @@ func TestGetUsers(t *testing.T) {
 		t.Errorf("got code %v, want %v", code, http.StatusCreated)
 	}
 	body1 := w.Body.Bytes()
-	log.Infof(c, "got response %v", string(body1))
+	c.Infof("got response %v", string(body1))
 
 	var b3 useredit
 	err = json.Unmarshal(body, &b3)
@@ -1771,16 +1763,16 @@ func TestGetUsers(t *testing.T) {
 	}
 }
 
-func addTestUser(c context.Context, u string, admin bool) (*datastore.Key, error) {
+func addTestUser(c appengine.Context, u string, admin bool) (*datastore.Key, error) {
 	q := datastore.NewQuery("SVDPUser").KeysOnly().Filter("Email =", u).Filter("IsAdmin =", admin)
 	keys, err := q.GetAll(c, nil)
 	if err != nil {
-		log.Errorf(c, "Failed to query for users: %v", err)
+		c.Errorf("Failed to query for users: %v", err)
 		return nil, err
 	}
 
 	if len(keys) > 0 {
-		log.Infof(c, "user %v/%v already in datastore", u, admin)
+		c.Infof("user %v/%v already in datastore", u, admin)
 		return keys[0], nil
 	}
 
@@ -1789,9 +1781,9 @@ func addTestUser(c context.Context, u string, admin bool) (*datastore.Key, error
 	id, err := datastore.Put(c, datastore.NewIncompleteKey(c, "SVDPUser",
 		nil), newuser)
 
-	log.Infof(c, "id=%v, appuser=%v, err=%v", id, newuser, err)
+	c.Infof("id=%v, appuser=%v, err=%v", id, newuser, err)
 	if err != nil {
-		log.Errorf(c, "Failed to put user: %v", err)
+		c.Errorf("Failed to put user: %v", err)
 		return nil, err
 	}
 	return id, nil

@@ -2,6 +2,7 @@ package frederic
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	log_ "log"
@@ -13,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/aetest"
 	"google.golang.org/appengine/log"
@@ -990,9 +990,7 @@ func TestEditVisitPage(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
 		}
-		req.Header = map[string][]string{
-			"Content-Type": {"application/json"},
-		}
+		req.Header.Set("Content-Type", "application/json")
 		aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 		w := httptest.NewRecorder()
@@ -1088,9 +1086,7 @@ func TestListVisitsInRange(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create req: %v", err)
 			}
-			req.Header = map[string][]string{
-				"Content-Type": {"application/json"},
-			}
+			req.Header.Set("Content-Type", "application/json")
 			aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 			w := httptest.NewRecorder()
@@ -1197,9 +1193,7 @@ func TestDownloadVisitsInRange(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create req: %v", err)
 			}
-			req.Header = map[string][]string{
-				"Content-Type": {"application/json"},
-			}
+			req.Header.Set("Content-Type", "application/json")
 			aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 			w := httptest.NewRecorder()
@@ -1332,9 +1326,7 @@ func TestListVisitsByClient(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create req: %v", err)
 			}
-			req.Header = map[string][]string{
-				"Content-Type": {"application/json"},
-			}
+			req.Header.Set("Content-Type", "application/json")
 			aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 			w := httptest.NewRecorder()
@@ -1441,9 +1433,7 @@ func TestDownloadVisitsByClientInRange(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create req: %v", err)
 			}
-			req.Header = map[string][]string{
-				"Content-Type": {"application/json"},
-			}
+			req.Header.Set("Content-Type", "application/json")
 			aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 			w := httptest.NewRecorder()
@@ -1576,9 +1566,7 @@ func TestDedupedVisitsByClient(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create req: %v", err)
 			}
-			req.Header = map[string][]string{
-				"Content-Type": {"application/json"},
-			}
+			req.Header.Set("Content-Type", "application/json")
 			aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 			w := httptest.NewRecorder()
@@ -1683,9 +1671,7 @@ func TestDownloadDedupedVisitsByClient(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create req: %v", err)
 			}
-			req.Header = map[string][]string{
-				"Content-Type": {"application/json"},
-			}
+			req.Header.Set("Content-Type", "application/json")
 			aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 			w := httptest.NewRecorder()

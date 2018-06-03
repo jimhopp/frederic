@@ -3,6 +3,7 @@ package frederic
 //TODO: -figure out testing of update pages
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"html/template"
@@ -13,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"

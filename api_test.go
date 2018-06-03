@@ -2,6 +2,7 @@ package frederic
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,7 +16,6 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/aetest"
 	"google.golang.org/appengine/datastore"
@@ -35,9 +35,7 @@ func TestAddClient(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
+	req.Header.Set("Content-Type", "application/json")
 
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
@@ -114,10 +112,7 @@ func TestAddClientNamesEmpty(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
 		}
-		req.Header = map[string][]string{
-			"Content-Type": {"application/json"},
-		}
-
+		req.Header.Set("Content-Type", "application/json")
 		aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 		w := httptest.NewRecorder()
@@ -185,10 +180,8 @@ func TestAddClientInvalidValue(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
 		}
-		req.Header = map[string][]string{
-			"Content-Type": {"application/json"},
-		}
 
+		req.Header.Set("Content-Type", "application/json")
 		aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 		w := httptest.NewRecorder()
@@ -330,9 +323,7 @@ func TestGetAllVisitsInRange(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create req: %v", err)
 			}
-			req.Header = map[string][]string{
-				"Content-Type": {"application/json"},
-			}
+			req.Header.Set("Content-Type", "application/json")
 			aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 			w := httptest.NewRecorder()
@@ -436,9 +427,7 @@ func TestGetAllVisits(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
 		}
-		req.Header = map[string][]string{
-			"Content-Type": {"application/json"},
-		}
+		req.Header.Set("Content-Type", "application/json")
 		aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 		w := httptest.NewRecorder()
@@ -520,10 +509,8 @@ func TestUpdateClient(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -592,10 +579,8 @@ func TestVisitRouter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -635,7 +620,7 @@ func TestVisitRouter(t *testing.T) {
 	for _, u := range reqs {
 
 		req, err := inst.NewRequest("PUT", u.path, u.data)
-		req.Header = map[string][]string{"Content-Type": {"application/json"}}
+		req.Header.Set("Content-Type", "application/json")
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
 		}
@@ -674,10 +659,8 @@ func TestAddVisit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -769,10 +752,8 @@ func TestAddVisitMissingData(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
 		}
-		req.Header = map[string][]string{
-			"Content-Type": {"application/json"},
-		}
 
+		req.Header.Set("Content-Type", "application/json")
 		aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 		w := httptest.NewRecorder()
@@ -826,9 +807,7 @@ func TestEditVisit(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
 		}
-		req.Header = map[string][]string{
-			"Content-Type": {"application/json"},
-		}
+		req.Header.Set("Content-Type", "application/json")
 		aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 		w := httptest.NewRecorder()
@@ -864,9 +843,7 @@ func TestEditVisit(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
 		}
-		req.Header = map[string][]string{
-			"Content-Type": {"application/json"},
-		}
+		req.Header.Set("Content-Type", "application/json")
 		aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 		w := httptest.NewRecorder()
@@ -976,9 +953,7 @@ func TestEditVisitMissingData(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
 		}
-		req.Header = map[string][]string{
-			"Content-Type": {"application/json"},
-		}
+		req.Header.Set("Content-Type", "application/json")
 		aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 		w := httptest.NewRecorder()
@@ -1014,9 +989,7 @@ func TestEditVisitMissingData(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
 		}
-		req.Header = map[string][]string{
-			"Content-Type": {"application/json"},
-		}
+		req.Header.Set("Content-Type", "application/json")
 		aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 		w := httptest.NewRecorder()
@@ -1097,10 +1070,8 @@ func TestUpdateInvalidData(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
 		}
-		req.Header = map[string][]string{
-			"Content-Type": {"application/json"},
-		}
 
+		req.Header.Set("Content-Type", "application/json")
 		aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 		w := httptest.NewRecorder()
@@ -1152,10 +1123,8 @@ func TestUpdateMissingData(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create req: %v", err)
 		}
-		req.Header = map[string][]string{
-			"Content-Type": {"application/json"},
-		}
 
+		req.Header.Set("Content-Type", "application/json")
 		aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 		w := httptest.NewRecorder()
@@ -1196,10 +1165,8 @@ func TestUpdateMissingId(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -1234,10 +1201,8 @@ func TestUpdateMalformedId(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -1262,10 +1227,8 @@ func addclienttodb(clt client, inst aetest.Instance) (id int64, err error) {
 	if err != nil {
 		return -1, err
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "adduser@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -1358,10 +1321,8 @@ func TestAddUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -1419,10 +1380,8 @@ func TestAddUsersMissingIds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -1457,10 +1416,8 @@ func TestUsersNotCaseSensitive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -1507,10 +1464,8 @@ func TestEditUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -1539,10 +1494,8 @@ func TestEditUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req1: %v", err)
 	}
-	req1.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req1)
 
 	w1 := httptest.NewRecorder()
@@ -1598,10 +1551,8 @@ func TestEditUsersNotAdmin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -1628,10 +1579,8 @@ func TestDeleteUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -1668,10 +1617,8 @@ func TestDeleteUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req1: %v", err)
 	}
-	req1.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req1)
 
 	w1 := httptest.NewRecorder()
@@ -1718,10 +1665,8 @@ func TestGetUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req: %v", err)
 	}
-	req.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req)
 
 	w := httptest.NewRecorder()
@@ -1741,10 +1686,8 @@ func TestGetUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create req1: %v", err)
 	}
-	req1.Header = map[string][]string{
-		"Content-Type": {"application/json"},
-	}
 
+	req1.Header.Set("Content-Type", "application/json")
 	aetest.Login(&user.User{Email: "test@example.org"}, req1)
 
 	w1 := httptest.NewRecorder()

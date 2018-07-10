@@ -287,8 +287,13 @@ func webuserOK(c context.Context, w http.ResponseWriter, r *http.Request) bool {
 	}
 	if !authzed {
 		log.Warningf(c, "authorization failure: %v", u.Email)
+		type UnauthInfo struct {
+			Email string
+		}
+		unauthInfo := UnauthInfo{u.Email}
 		w.WriteHeader(http.StatusForbidden)
-		err = templates.ExecuteTemplate(w, "unauthorized.html", nil)
+		err = templates.ExecuteTemplate(w, "unauthorized.html",
+			unauthInfo)
 		if err != nil {
 			log.Errorf(c, "unauthorized user and got err on template: %v", err)
 		}

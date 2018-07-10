@@ -635,7 +635,7 @@ func TestEndpointsNotAuthorized(t *testing.T) {
 		}
 		if endpoints[i].humanReadable {
 			body := w.Body.Bytes()
-			notauth := `Sorry`
+			notauth := `Sorry, we don't have a user record for test@example.org`
 			if !bytes.Contains(body, []byte(notauth)) {
 				t.Errorf("endpoint %v: got body %v, did not contain %v", endpoints[i].url, string(body), notauth)
 			}

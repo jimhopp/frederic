@@ -7,4 +7,4 @@ before_install:
 - unzip -q $HOME/go_appengine_sdk_linux_amd64-1.9.66.zip -d $HOME
 - go get -u google.golang.org/appengine/...
 script:
-- goapp test
+- go test

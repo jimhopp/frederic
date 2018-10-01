@@ -1,4 +1,4 @@
-package frederic
+package main
 
 import (
 	"bytes"
@@ -308,10 +308,14 @@ func TestGetAllVisitsInRange(t *testing.T) {
 				Visitdate: "2013-07-03"},
 			{Vincentians: "Stu & Anne",
 				Visitdate: "2013-06-03"},
+			{Vincentians: "deleted",
+				Visitdate: "2013-06-03",
+				Deleted:   true},
 		},
 	}
 
 	numvisits := 0
+	numDeleted := 0
 	for i, viz := range visits {
 		for _, vst := range viz {
 			data, err := json.Marshal(vst)
@@ -343,6 +347,9 @@ func TestGetAllVisitsInRange(t *testing.T) {
 			if err != nil {
 				t.Errorf("unable to parse %v: %v", string(body), err)
 			}
+			if vst.Deleted {
+				numDeleted++
+			}
 			numvisits++
 		}
 	}
@@ -363,36 +370,41 @@ func TestGetAllVisitsInRange(t *testing.T) {
 	}
 
 	body := w.Body.Bytes()
-	createdvisits := []visit{}
-	err = json.Unmarshal(body, &createdvisits)
+	retrievedvisits := []visit{}
+	err = json.Unmarshal(body, &retrievedvisits)
 	if err != nil {
 		t.Errorf("error unmarshaling response to getvisitsinrange %v\n", err)
 	}
-	if len(createdvisits) != numvisits {
-		t.Errorf("got %v visits, want %v\n", len(createdvisits),
-			numvisits)
+	if len(retrievedvisits) != numvisits-numDeleted {
+		t.Errorf("got %v visits, want %v\n", len(retrievedvisits),
+			numvisits-numDeleted)
 	}
 	for _, viz := range visits {
 		for _, vst := range viz {
 			found := false
-			for _, createdvisit := range createdvisits {
-				if reflect.DeepEqual(createdvisit, vst) {
+			for _, retrievedvisit := range retrievedvisits {
+				if reflect.DeepEqual(retrievedvisit, vst) {
 					found = true
 					break
 				}
 			}
 			if !found {
-				t.Errorf("unable to find %v in %v",
-					vst, &createdvisits)
+				if !vst.Deleted {
+					t.Errorf("unable to find each member in %v in %v",
+						vst, retrievedvisits)
+				}
+			} else if vst.Deleted {
+				t.Errorf("retrieved a deleted visit somewhere in %v and shouldn't",
+					retrievedvisits)
 			}
 		}
 	}
-	for i, createdvisit := range createdvisits {
+	for i, retrievedvisit := range retrievedvisits {
 		var expecteddate string
 		expecteddate = "2013-0" + strconv.Itoa(7-i) + "-03"
-		if createdvisit.Visitdate != expecteddate {
+		if retrievedvisit.Visitdate != expecteddate {
 			t.Errorf("dates not sorted? expected date %v, found %v for i %v",
-				expecteddate, createdvisit.Visitdate, i)
+				expecteddate, retrievedvisit.Visitdate, i)
 		}
 	}
 }
@@ -476,6 +488,112 @@ func TestGetAllVisits(t *testing.T) {
 			1)
 	}
 	for i := 0; i < len(visits); i++ {
+		found := false
+		for j := 0; j < len(createdvisitrecs); j++ {
+			if reflect.DeepEqual(createdvisitrecs[j].Visit, visits[i]) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("unable to find %v in %v",
+				visits[i], &createdvisitrecs)
+		}
+	}
+}
+
+func TestIgnoreDeletedVisits(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+	cltid, err := addclienttodb(newclient, inst)
+	log_.Printf("TestAllVisits: got %v from addclienttodb\n", cltid)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	visits := []visit{
+		{Vincentians: "Michael, Mary Margaret",
+			Visitdate: "2013-04-03"},
+		{Vincentians: "Irene, Jim",
+			Visitdate: "2013-05-03"},
+		{Deleted: true,
+			Vincentians: "(deleted",
+			Visitdate:   "2013-05-03"},
+	}
+	deletedVisits := 0
+	for _, v := range visits {
+		if v.Deleted {
+			deletedVisits++
+		}
+	}
+
+	for i := 0; i < len(visits); i++ {
+		data, err := json.Marshal(visits[i])
+		if err != nil {
+			t.Fatalf("Failed to marshal %v", visits[i])
+		}
+		req, err := inst.NewRequest("PUT", "/api/visit/"+
+			strconv.FormatInt(cltid, 10), bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+		addTestUser(c, "test@example.org", true)
+
+		visitrouter(c, w, req)
+
+		code := w.Code
+		if code != http.StatusOK {
+			t.Errorf("got code %v, want %v", code, http.StatusCreated)
+		}
+
+		body := w.Body.Bytes()
+		newrec := &visitrec{}
+		err = json.Unmarshal(body, newrec)
+		if err != nil {
+			t.Errorf("unable to parse %v: %v", string(body), err)
+		}
+	}
+
+	req, err := inst.NewRequest("GET", "/api/getallvisits/"+
+		strconv.FormatInt(cltid, 10), nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w := httptest.NewRecorder()
+
+	c := appengine.NewContext(req)
+	getallvisits(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	body := w.Body.Bytes()
+	createdvisitrecs := []visitrec{}
+	err = json.Unmarshal(body, &createdvisitrecs)
+	if err != nil {
+		t.Errorf("error unmarshaling response to getvisits %v\n", err)
+	}
+	if len(createdvisitrecs) != len(visits)-deletedVisits {
+		t.Errorf("got %v visits, want %v\n", len(createdvisitrecs),
+			len(visits)-deletedVisits)
+	}
+	for i := 0; i < len(visits); i++ {
+		if visits[i].Deleted {
+			continue
+		}
 		found := false
 		for j := 0; j < len(createdvisitrecs); j++ {
 			if reflect.DeepEqual(createdvisitrecs[j].Visit, visits[i]) {

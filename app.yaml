@@ -1,7 +1,4 @@
-application: frederic-svdp
-version: 13
-runtime: go
-api_version: go1
+runtime: go111
 
 handlers:
 - url: /js
@@ -10,9 +7,12 @@ handlers:
 - url: /images
   static_dir: images
   secure: always
+- url: /worker
+  script: auto
+  secure: optional
 - url: /.*
-  script: _go_app
+  script: auto
   login: required
   secure: always
 env_variables:
-  BOOTSTRAP_USER: 'test@example.org'
+  BOOTSTRAP_USER: 'frederic.app.test@gmail.com'

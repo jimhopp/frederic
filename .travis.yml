@@ -1,4 +1,7 @@
 sudo:	false
+language: go
+go:
+- "1.11"
 env:
 - PATH=$PATH:$HOME/go_appengine/
 before_install:

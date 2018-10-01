@@ -1,4 +1,4 @@
-package frederic
+package main
 
 //TODO: -figure out testing of update pages
 
@@ -91,6 +91,7 @@ type update struct {
 }
 
 type visit struct {
+	Deleted             bool
 	Vincentians         string
 	Visitdate           string
 	Assistancerequested string
@@ -123,7 +124,7 @@ func (f ContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.Real(c, w, r)
 }
 
-func init() {
+func main() {
 	http.Handle("/", ContextHandler{homepage})
 	http.Handle("/clients", ContextHandler{listclientspage})
 	http.Handle("/client/", ContextHandler{getclientpage})
@@ -135,6 +136,9 @@ func init() {
 	http.Handle("/visitsbyclient", ContextHandler{listvisitsinrangebyclientpage})
 	http.Handle("/dedupedvisits", ContextHandler{listdedupedvisitsinrangebyclientpage})
 	http.Handle("/users", ContextHandler{edituserspage})
+	http.Handle("/tasks", ContextHandler{listtasks})
+	http.Handle("/startconversion", ContextHandler{startconversion})
+	http.Handle("/worker", ContextHandler{processTask})
 	http.Handle("/api/client", ContextHandler{addclient})
 	http.Handle("/api/client/", ContextHandler{editclient})
 	http.Handle("/api/visit/", ContextHandler{visitrouter})
@@ -143,6 +147,8 @@ func init() {
 	http.Handle("/api/getvisitsinrange/", ContextHandler{getvisitsinrange})
 	http.Handle("/api/users", ContextHandler{getallusers})
 	http.Handle("/api/users/edit", ContextHandler{editusers})
+
+	appengine.Main()
 }
 
 var funcMap = template.FuncMap{"ages": ages,
@@ -414,13 +420,16 @@ func getclientpage(c context.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := datastore.NewQuery("SVDPClientVisit").Ancestor(key).Order("-Visitdate")
+	q := datastore.NewQuery("SVDPClientVisit").
+		Ancestor(key).
+		Filter("Deleted =", false).
+		Order("-Visitdate")
 	var visits []visit
 	visitkeys, err := q.GetAll(c, &visits)
 	if err != nil {
 		log.Warningf(c, "got error %v on datastore get for visits with key %v\n", err,
 			key)
-		http.Error(w, "unable to find visits",
+		http.Error(w, fmt.Sprintf("unable to find visits for key %v, got %v", key, err),
 			http.StatusInternalServerError)
 		return
 	}
@@ -773,6 +782,7 @@ func listvisitsinrangepage(c context.Context, w http.ResponseWriter, r *http.Req
 	q := datastore.NewQuery("SVDPClientVisit").
 		Filter("Visitdate <=", end).
 		Filter("Visitdate >=", start).
+		Filter("Deleted =", false).
 		Order("-Visitdate")
 	var visits []visit
 	keys, err := q.GetAll(c, &visits)
@@ -876,7 +886,8 @@ func listvisitsinrangebyclientpage(c context.Context, w http.ResponseWriter, r *
 
 	q := datastore.NewQuery("SVDPClientVisit").
 		Filter("Visitdate <=", end).
-		Filter("Visitdate >=", start)
+		Filter("Visitdate >=", start).
+		Filter("Deleted =", false)
 	var visits []visit
 	keys, err := q.GetAll(c, &visits)
 	if err != nil {
@@ -1089,5 +1100,38 @@ func listdedupedvisitsinrangebyclientpage(c context.Context, w http.ResponseWrit
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
+	}
+}
+
+func listtasks(c context.Context, w http.ResponseWriter, r *http.Request) {
+	if !webuserOK(c, w, r) {
+		return
+	}
+
+	u := user.Current(c)
+	admin, err := useradmin(c, u.Email)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !admin {
+		http.Error(w, "must be admin to access tasks page",
+			http.StatusForbidden)
+		return
+	}
+
+	l, err := user.LogoutURL(c, "http://www.svdpsm.org/")
+	data := struct {
+		U, LogoutUrl string
+	}{
+		u.Email,
+		l,
+	}
+	log.Infof(c, "***\nlisting tasks\n")
+
+	err = templates.ExecuteTemplate(w, "tasks.html", data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

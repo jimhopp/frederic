@@ -1,4 +1,4 @@
-package frederic
+package main
 
 import (
 	"text/template"

@@ -91,6 +91,7 @@ type update struct {
 }
 
 type visit struct {
+	Deleted             bool
 	Vincentians         string
 	Visitdate           string
 	Assistancerequested string
@@ -414,7 +415,10 @@ func getclientpage(c context.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := datastore.NewQuery("SVDPClientVisit").Ancestor(key).Order("-Visitdate")
+	q := datastore.NewQuery("SVDPClientVisit").
+		Ancestor(key).
+		Filter("Deleted =", false).
+		Order("-Visitdate")
 	var visits []visit
 	visitkeys, err := q.GetAll(c, &visits)
 	if err != nil {
@@ -773,6 +777,7 @@ func listvisitsinrangepage(c context.Context, w http.ResponseWriter, r *http.Req
 	q := datastore.NewQuery("SVDPClientVisit").
 		Filter("Visitdate <=", end).
 		Filter("Visitdate >=", start).
+		Filter("Deleted =", false).
 		Order("-Visitdate")
 	var visits []visit
 	keys, err := q.GetAll(c, &visits)
@@ -876,7 +881,8 @@ func listvisitsinrangebyclientpage(c context.Context, w http.ResponseWriter, r *
 
 	q := datastore.NewQuery("SVDPClientVisit").
 		Filter("Visitdate <=", end).
-		Filter("Visitdate >=", start)
+		Filter("Visitdate >=", start).
+		Filter("Deleted =", false)
 	var visits []visit
 	keys, err := q.GetAll(c, &visits)
 	if err != nil {

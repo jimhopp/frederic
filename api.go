@@ -652,8 +652,9 @@ func getallvisits(c context.Context, w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest)
 		return
 	}
-	q := datastore.NewQuery("SVDPClientVisit").Ancestor(datastore.NewKey(
-		c, "SVDPClient", "", id, nil))
+	q := datastore.NewQuery("SVDPClientVisit").
+		Ancestor(datastore.NewKey(c, "SVDPClient", "", id, nil)).
+		Filter("Deleted =", false)
 	var visits []visit
 	ids, err := q.GetAll(c, &visits)
 	if err != nil {
@@ -666,7 +667,8 @@ func getallvisits(c context.Context, w http.ResponseWriter, r *http.Request) {
 	visitrecs := make([]visitrec, len(visits))
 	for i := 0; i < len(visits); i++ {
 		visitrecs[i] = visitrec{ids[i].IntID(), id,
-			visit{visits[i].Vincentians, visits[i].Visitdate,
+			visit{visits[i].Deleted, visits[i].Vincentians,
+				visits[i].Visitdate,
 				visits[i].Assistancerequested, visits[i].Giftcardamt,
 				visits[i].Numfoodboxes, visits[i].Rentassistance,
 				visits[i].Utilitiesassistance,
@@ -691,14 +693,16 @@ func getvisitsinrange(c context.Context, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	q := datastore.NewQuery("SVDPClientVisit").Order("-Visitdate")
+	q := datastore.NewQuery("SVDPClientVisit").
+		Filter("Deleted =", false).
+		Order("-Visitdate")
 	var visits []visit
 	ids, err := q.GetAll(c, &visits)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Debugf(c, "getallvisits: got keys %v\n", ids)
+	log.Debugf(c, "getvisitsinrange: got keys %v\n", ids)
 	w.WriteHeader(http.StatusOK)
 
 	b, err := json.Marshal(visits)

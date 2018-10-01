@@ -431,6 +431,99 @@ func TestGetClientPage(t *testing.T) {
 	}
 }
 
+func TestDeletedVisitsNotShownOnClientPage(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	newclient := client{Firstname: "frederic", Lastname: "ozanam"}
+
+	id, err := addclienttodb(newclient, inst)
+	if err != nil {
+		t.Fatalf("unable to add client: %v", err)
+	}
+
+	sid := strconv.FormatInt(id, 10)
+
+	visits := []visit{
+		{Vincentians: "Eileen, Lynn",
+			Visitdate:           "2013-04-03",
+			Assistancerequested: "test3"},
+		{Vincentians: "Stu & Anne",
+			Visitdate:           "2013-03-03",
+			Assistancerequested: "test4"},
+		{Vincentians: "deleted",
+			Visitdate:           "2013-03-03",
+			Assistancerequested: "test5",
+			Deleted:             true},
+	}
+
+	numvisits := 0
+	for _, vst := range visits {
+		data, err := json.Marshal(vst)
+		if err != nil {
+			t.Fatalf("Failed to marshal %v", vst)
+		}
+		req, err := inst.NewRequest("PUT", "/visit/"+sid,
+			bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("Failed to create req: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+		w := httptest.NewRecorder()
+		c := appengine.NewContext(req)
+		addTestUser(c, "test@example.org", true)
+
+		addvisit(c, w, req)
+
+		code := w.Code
+		if code != http.StatusOK {
+			t.Errorf("got code %v, want %v", code, http.StatusCreated)
+		}
+
+		body := w.Body.Bytes()
+		newrec := &visitrec{}
+		err = json.Unmarshal(body, newrec)
+		if err != nil {
+			t.Errorf("unable to parse %v: %v", string(body), err)
+		}
+		numvisits++
+	}
+
+	url := "/client/" + sid
+	req, err := inst.NewRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+
+	w := httptest.NewRecorder()
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org", true)
+
+	getclientpage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+	body := w.Body.Bytes()
+	rows := []string{`test3`, `test4`}
+	for i := 0; i < len(rows); i++ {
+		if !bytes.Contains(body, []byte(rows[i])) {
+			t.Errorf("got body %v, did not contain %v", string(body), rows[i])
+		}
+	}
+	if bytes.Contains(body, []byte("test5")) {
+		t.Errorf("got deleted visit and should not have, body %v", string(body))
+	}
+}
+
 func TestGetClientNotFound(t *testing.T) {
 	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
 	if err != nil {
@@ -1071,6 +1164,10 @@ func TestListVisitsInRange(t *testing.T) {
 			{Vincentians: "Stu & Anne",
 				Visitdate:           "2013-03-03",
 				Assistancerequested: "test4"},
+			{Vincentians: "deleted",
+				Visitdate:           "2013-03-03",
+				Assistancerequested: "test5",
+				Deleted:             true},
 		},
 	}
 
@@ -1129,8 +1226,13 @@ func TestListVisitsInRange(t *testing.T) {
 	for _, viz := range visits {
 		for _, vst := range viz {
 			if !bytes.Contains(body, []byte(vst.Assistancerequested)) {
-				t.Errorf("unable to find %v in %v",
-					vst, string(body))
+				if !vst.Deleted {
+					t.Errorf("unable to find %v in %v",
+						vst, string(body))
+				}
+			} else if vst.Deleted {
+				t.Errorf("got deleted visit and shouldn't: %v",
+					vst)
 			}
 		}
 	}
@@ -1178,6 +1280,10 @@ func TestDownloadVisitsInRange(t *testing.T) {
 			{Vincentians: "Stu & Anne",
 				Visitdate:           "2013-03-03",
 				Assistancerequested: "test4"},
+			{Vincentians: "deleted",
+				Visitdate:           "2013-03-03",
+				Assistancerequested: "test5",
+				Deleted:             true},
 		},
 	}
 
@@ -1241,8 +1347,15 @@ func TestDownloadVisitsInRange(t *testing.T) {
 	for i, viz := range visits {
 		for j, vst := range viz {
 			if !bytes.Contains(body, []byte(vst.Assistancerequested)) {
-				t.Errorf("unable to find %v in %v",
-					vst, string(body))
+				if vst.Deleted {
+					continue
+				} else {
+					t.Errorf("unable to find %v in %v",
+						vst, string(body))
+				}
+			} else if vst.Deleted {
+				t.Errorf("got deleted visit and shouldn't: %v",
+					vst)
 			}
 			clientName := []byte(`"` + newclients[i].Lastname + `, ` + newclients[i].Firstname + `"`)
 			if !bytes.Contains(body, clientName) {
@@ -1303,6 +1416,10 @@ func TestListVisitsByClient(t *testing.T) {
 			{Vincentians: "Irene, Jim",
 				Visitdate:           "2013-01-03",
 				Assistancerequested: "test2"},
+			{Vincentians: "deleted",
+				Visitdate:           "2013-01-03",
+				Assistancerequested: "test5",
+				Deleted:             true},
 		},
 		{
 			{Vincentians: "Eileen, Lynn",
@@ -1369,8 +1486,13 @@ func TestListVisitsByClient(t *testing.T) {
 	for _, viz := range visits {
 		for _, vst := range viz {
 			if !bytes.Contains(body, []byte(vst.Assistancerequested)) {
-				t.Errorf("unable to find %v in %v",
-					vst, string(body))
+				if !vst.Deleted {
+					t.Errorf("unable to find %v in %v",
+						vst, string(body))
+				}
+			} else if vst.Deleted {
+				t.Errorf("got deleted visit and shouldn't: %v",
+					vst)
 			}
 		}
 	}
@@ -1418,6 +1540,10 @@ func TestDownloadVisitsByClientInRange(t *testing.T) {
 			{Vincentians: "Stu & Anne",
 				Visitdate:           "2013-03-03",
 				Assistancerequested: "test4"},
+			{Vincentians: "deleted",
+				Visitdate:           "2013-03-03",
+				Assistancerequested: "test5",
+				Deleted:             true},
 		},
 	}
 
@@ -1481,8 +1607,15 @@ func TestDownloadVisitsByClientInRange(t *testing.T) {
 	for i, viz := range visits {
 		for j, vst := range viz {
 			if !bytes.Contains(body, []byte(vst.Assistancerequested)) {
-				t.Errorf("unable to find %v in %v",
-					vst, string(body))
+				if vst.Deleted {
+					continue
+				} else {
+					t.Errorf("unable to find %v in %v",
+						vst, string(body))
+				}
+			} else if vst.Deleted {
+				t.Errorf("got deleted visit and shouldn't: %v",
+					vst)
 			}
 			clientName := []byte(`"` + newclients[i].Lastname + `, ` + newclients[i].Firstname + `"`)
 			if !bytes.Contains(body, clientName) {

@@ -53,6 +53,8 @@
      <tr>
       <td>Vouchers - other:</td><td><input type="number" class="number" id="vouchersother" value="{{ .Visit.Vouchersother }}" name="vouchersother"></td>
      </tr>
+      <td>Deleted:</td><td> <input type="checkbox" id="deleted"{{ if .Visit.Deleted }} checked="checked"{{ end }}></td>
+     </tr>
      <tr>
       <td>Comment:</td><td><textarea id="comment" name="comment" cols="50">{{ .Visit.Comment }}</textarea></td>
      </tr>
@@ -146,6 +148,7 @@
         Vouchersclothing: $( 'input#vouchersclothing' ).val(),
         Vouchersfurniture: $( 'input#vouchersfurniture' ).val(),
         Vouchersother: $( 'input#vouchersother' ).val(),
+        Deleted: $( 'input#deleted' ).is(":checked"),
         Comment: $( 'textarea#comment' ).val(),
       }
 

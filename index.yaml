@@ -16,6 +16,24 @@ indexes:
   - name: Firstname
 
 - kind: SVDPClientVisit
+  properties:
+  - name: Deleted
+  - name: Visitdate
+
+- kind: SVDPClientVisit
+  properties:
+  - name: Deleted
+  - name: Visitdate
+    direction: desc
+
+- kind: SVDPClientVisit
+  ancestor: yes
+  properties:
+  - name: Deleted
+  - name: Visitdate
+    direction: desc
+
+- kind: SVDPClientVisit
   ancestor: yes
   properties:
   - name: Visitdate

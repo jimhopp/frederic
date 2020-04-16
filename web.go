@@ -799,6 +799,10 @@ func listvisitsinrangepage(c context.Context, w http.ResponseWriter, r *http.Req
 		visitrecs[i].Visit = vst
 		visitrecs[i].Id = keys[i].IntID()
 		cltkey := keys[i].Parent()
+		if cltkey == nil { //this should never happen but...
+			log.Errorf(c, "cltkey nil for visit %v", keys[i])
+			break
+		}
 		visitrecs[i].ClientId = cltkey.IntID()
 		var clt client
 		err = datastore.Get(c, cltkey, &clt)
@@ -903,6 +907,10 @@ func listvisitsinrangebyclientpage(c context.Context, w http.ResponseWriter, r *
 		visitrecs[i].Visit = vst
 		visitrecs[i].Id = keys[i].IntID()
 		cltkey := keys[i].Parent()
+		if cltkey == nil { //this should never happen but...
+			log.Errorf(c, "cltkey nil for visit %v", keys[i])
+			break
+		}
 		visitrecs[i].ClientId = cltkey.IntID()
 		var clt client
 		err = datastore.Get(c, cltkey, &clt)
@@ -1015,6 +1023,10 @@ func listdedupedvisitsinrangebyclientpage(c context.Context, w http.ResponseWrit
 	log.Debugf(c, "got ids %v", keys)
 	for _, k := range keys {
 		cltkey := k.Parent()
+		if cltkey == nil { // this should never happen but...
+			log.Errorf(c, "got nil client for visit %v", k)
+			break
+		}
 		cltId := cltkey.IntID()
 
 		var rec *family

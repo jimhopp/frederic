@@ -16,6 +16,7 @@ import (
 
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/aetest"
+	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/user"
 )
@@ -1674,6 +1675,88 @@ func TestDownloadVisitsByClientInRange(t *testing.T) {
 	if !m {
 		t.Errorf("visit dates not sorted: %v", string(body))
 	}
+}
+
+func TestVisitsWithNilClient(t *testing.T) {
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	if err != nil {
+		t.Fatalf("Failed to create instance: %v", err)
+	}
+	defer inst.Close()
+
+	req, err := inst.NewRequest("GET", "/dedupedvisits?startdate=2013-01-03&enddate=2013-04-03", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w := httptest.NewRecorder()
+
+	c := appengine.NewContext(req)
+	addTestUser(c, "test@example.org", true)
+
+	visits := []visit{
+		{Vincentians: "Michael, Mary Margaret",
+			Visitdate:           "2013-02-03",
+			Assistancerequested: "test1"},
+		{Vincentians: "Irene, Jim",
+			Visitdate:           "2013-01-03",
+			Assistancerequested: "test2"},
+		{Vincentians: "Eileen, Lynn",
+			Visitdate:           "2013-04-03",
+			Assistancerequested: "test3"},
+		{Vincentians: "Stu & Anne",
+			Visitdate:           "2013-03-03",
+			Assistancerequested: "test4"},
+	}
+
+	keyptrs := make([]*datastore.Key, len(visits))
+
+	for i := 0; i < len(keyptrs); i++ {
+		k := datastore.NewIncompleteKey(c, "SVDPClientVisit", nil)
+		keyptrs[i] = k
+	}
+
+	_, err = datastore.PutMulti(c, keyptrs, visits)
+
+	if err != nil {
+		t.Fatalf("PutMulti failed: %v", err)
+	}
+
+	listdedupedvisitsinrangebyclientpage(c, w, req)
+
+	code := w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	req, err = inst.NewRequest("GET", "/visits?startdate=2013-01-03&enddate=2013-04-03", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w = httptest.NewRecorder()
+
+	listvisitsinrangepage(c, w, req)
+
+	code = w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
+	req, err = inst.NewRequest("GET", "/listvisitsinrangebyclientpage?startdate=2013-01-03&enddate=2013-04-03", nil)
+	if err != nil {
+		t.Fatalf("Failed to create req: %v", err)
+	}
+	aetest.Login(&user.User{Email: "test@example.org"}, req)
+	w = httptest.NewRecorder()
+
+	listvisitsinrangebyclientpage(c, w, req)
+
+	code = w.Code
+	if code != http.StatusOK {
+		t.Errorf("got code %v, want %v", code, http.StatusOK)
+	}
+
 }
 
 func TestDedupedVisitsByClient(t *testing.T) {

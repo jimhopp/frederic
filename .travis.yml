@@ -3,6 +3,5 @@ go:
 - "1.11"
 env:
 before_install:
-- sudo apt-get -y update && sudo apt-get -y install google-cloud-sdk && sudo apt-get -y install google-cloud-sdk-app-engine-go
 script:
 - go test -v -timeout 0

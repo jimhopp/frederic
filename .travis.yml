@@ -4,5 +4,4 @@ go:
 env:
 before_install:
 script:
-- export GO111MODULE=on
 - go test -v -timeout 0

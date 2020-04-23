@@ -2,12 +2,7 @@ language: go
 go:
 - "1.11"
 env:
-- PATH=$PATH:$HOME/go_appengine/
-- GO111MODULE="on"
 before_install:
-- wget https://storage.googleapis.com/appengine-sdks/featured/go_appengine_sdk_linux_amd64-1.9.66.zip --directory-prefix=$HOME/
-- pwd 
-- unzip -q $HOME/go_appengine_sdk_linux_amd64-1.9.66.zip -d $HOME
-#- go get -v -u google.golang.org/appengine/...
+- sudo apt-get -y update && sudo apt-get -y install google-cloud-sdk && sudo apt-get -y install google-cloud-sdk-app-engine-go
 script:
 - go test -v -timeout 0

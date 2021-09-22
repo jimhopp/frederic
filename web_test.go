@@ -1966,7 +1966,7 @@ func TestDownloadDedupedVisitsByClient(t *testing.T) {
 				clt, string(body))
 		}
 	}
-	m, err := regexp.Match(`(?s).*"ozanam, frederic"."*1".*"0".*"0".*"1".*"Seton, Elizabeth".*"0".*"1".*"0".*"1".*"1".*"1".*"0".*"2"`, body)
+	m, err := regexp.Match(`(?s).*"ozanam, frederic".*"1".*"0".*"0".*"1".*"Seton, Elizabeth".*"0".*"1".*"0".*"1".*"1".*"1".*"0".*"2"`, body)
 	if err != nil {
 		t.Errorf("got error on regexp match: %v", err)
 	}

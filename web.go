@@ -974,6 +974,7 @@ func listvisitsinrangebyclientpage(c context.Context, w http.ResponseWriter, r *
 type family struct {
 	Id         int64
 	Name       string
+	Address       string
 	Adults     int
 	Seniors    int
 	Minors     int
@@ -1043,6 +1044,8 @@ func listdedupedvisitsinrangebyclientpage(c context.Context, w http.ResponseWrit
 				continue
 			}
 			rec.Name = clt.Lastname + `, ` + clt.Firstname
+			rec.Address = clt.Address
+			if len(clt.Apt) > 0 { rec.Address += ", Apt " + clt.Apt }
 			rec.Adults, err = numAdults(clt)
 			if err != nil {
 				log.Warningf(c, "error getting numAdults for clt %v: %v", clt, err)

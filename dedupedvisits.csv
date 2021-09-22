@@ -1,6 +1,6 @@
 Start Date,End Date
 {{ .Start }},{{ .End }}
-"Client","Adults (18-59)","Seniors (60+)","Minors","Family Size"
-{{ range .CV }}"{{ .Name }}","{{ .Adults }}","{{ .Seniors }}","{{ .Minors }}","{{ .FamilySize }}"
+"Client","Address","Adults (18-59)","Seniors (60+)","Minors","Family Size"
+{{ range .CV }}"{{ .Name }}","{{ .Address }}","{{ .Adults }}","{{ .Seniors }}","{{ .Minors }}","{{ .FamilySize }}"
 {{ end }}
-"","{{ .TotalAdults }}","{{ .TotalSeniors }}","{{ .TotalMinors }}","{{ .TotalFamSize }}"
+"","","{{ .TotalAdults }}","{{ .TotalSeniors }}","{{ .TotalMinors }}","{{ .TotalFamSize }}"

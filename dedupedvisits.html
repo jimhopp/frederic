@@ -20,6 +20,7 @@
       <thead>
         <tr>
 	<th class="bordered">Client</th>
+	<th class="bordered">Address</th>
 	<th class="bordered">Adults (18-59)</th>
 	<th class="bordered">Seniors (60+) </th>
 	<th class="bordered">Minors</th>
@@ -30,6 +31,7 @@
       {{ range $i, $clt := .CV }}
         <tr>
 		<td class="bordered"><a href="/client/{{ .Id }}">{{ .Name }}</a></td>
+		<td class="bordered">{{ .Address }}</td>
 		<td class="bordered number">{{ .Adults}}</td>
 		<td class="bordered number">{{ .Seniors }}</td>
 		<td class="bordered number">{{ .Minors }}</td>
@@ -39,6 +41,7 @@
       </tbody>
       <tfoot>
 	<tr>
+          <td class="bordered"></td>
           <td class="bordered"></td>
 	  <td class="bordered number">{{ .TotalAdults}}</td>
 	  <td class="bordered number">{{ .TotalSeniors }}</td>

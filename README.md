@@ -1,7 +1,7 @@
 # frederic
 Web app that tracks clients for a St. Vincent de Paul conference.
 
-[![Build Status](https://travis-ci.org/jimhopp/frederic.svg?branch=master)](https://travis-ci.org/jimhopp/frederic)
+[![Build Status](https://app.travis-ci.com/jimhopp/frederic.svg?branch=master)](https://app.travis-ci.com/jimhopp/frederic)
 
 This app runs on Google's appengine. See https://cloud.google.com/appengine/docs/go/ for details.
 

@@ -1766,8 +1766,8 @@ func TestDedupedVisitsByClient(t *testing.T) {
 	}
 	defer inst.Close()
 
-	newclients := []client{{Firstname: "frederic", Lastname: "ozanam", DOB: getDOBforAge(49), Adultmales: "1"},
-		{Firstname: "Elizabeth", Lastname: "Seton", DOB: getDOBforAge(62), Adultfemales: "1"},
+	newclients := []client{{Firstname: "frederic", Lastname: "ozanam", Address: "123 Laurel St", DOB: getDOBforAge(49), Adultmales: "1"},
+		{Firstname: "Elizabeth", Lastname: "Seton", Address: "789 Chestnut St", Apt: "99", DOB: getDOBforAge(62), Adultfemales: "1"},
 	}
 	cltids := make([]int64, len(newclients))
 	for i, newclient := range newclients {
@@ -1852,10 +1852,21 @@ func TestDedupedVisitsByClient(t *testing.T) {
 	for _, clt := range newclients {
 		if !bytes.Contains(body, []byte(clt.Lastname)) {
 			t.Errorf("unable to find %v in %v",
-				clt, string(body))
+				clt.Lastname, string(body))
+		}
+		if !bytes.Contains(body, []byte(clt.Address)) {
+			t.Errorf("unable to find %v in %v",
+				clt.Address, string(body))
+		}
+		if len(clt.Apt) > 0 {
+			if !bytes.Contains(body, []byte(clt.Apt)) {
+				t.Errorf("unable to find %v in %v",
+					clt.Apt, string(body))
+
+				}
 		}
 	}
-	m, err := regexp.Match(`(?s).*ozanam, frederic</a></td>.*1</td>.*0</td>.*0</td>.*1</td>.*Seton, Elizabeth</a></td>.*0</td>.*1</td>.*0</td>.*1</td>.*1</td>.*1</td>.*0</td>.*2</td>`, body)
+	m, err := regexp.Match(`(?s).*ozanam, frederic</a></td>.*123 Laurel St</td>.*1</td>.*0</td>.*0</td>.*1</td>.*Seton, Elizabeth</a></td>.*789 Chestnut St, Apt 99</td>.*0</td>.*1</td>.*0</td>.*1</td>.*1</td>.*1</td>.*0</td>.*2</td>`, body)
 	if err != nil {
 		t.Errorf("got error on regexp match: %v", err)
 	}
@@ -1871,8 +1882,8 @@ func TestDownloadDedupedVisitsByClient(t *testing.T) {
 	}
 	defer inst.Close()
 
-	newclients := []client{{Firstname: "frederic", Lastname: "ozanam", DOB: getDOBforAge(49), Adultmales: "1"},
-		{Firstname: "Elizabeth", Lastname: "Seton", DOB: getDOBforAge(62), Adultfemales: "1"},
+	newclients := []client{{Firstname: "frederic", Lastname: "ozanam", Address: "123 Laurel St", DOB: getDOBforAge(49), Adultmales: "1"},
+		{Firstname: "Elizabeth", Lastname: "Seton", Address: "789 Chestnut St", Apt: "99", DOB: getDOBforAge(62), Adultfemales: "1"},
 	}
 	cltids := make([]int64, len(newclients))
 	for i, newclient := range newclients {
@@ -1963,10 +1974,14 @@ func TestDownloadDedupedVisitsByClient(t *testing.T) {
 	for _, clt := range newclients {
 		if !bytes.Contains(body, []byte(clt.Lastname)) {
 			t.Errorf("unable to find %v in %v",
-				clt, string(body))
+				clt.Lastname, string(body))
+		}
+		if !bytes.Contains(body, []byte(clt.Address)) {
+			t.Errorf("unable to find %v in %v",
+				clt.Address, string(body))
 		}
 	}
-	m, err := regexp.Match(`(?s).*"ozanam, frederic".*"1".*"0".*"0".*"1".*"Seton, Elizabeth".*"0".*"1".*"0".*"1".*"1".*"1".*"0".*"2"`, body)
+	m, err := regexp.Match(`(?s).*"ozanam, frederic".*"123 Laurel St".*"1".*"0".*"0".*"1".*"Seton, Elizabeth".*"789 Chestnut St, Apt 99".*"0".*"1".*"0".*"1".*"1".*"1".*"0".*"2"`, body)
 	if err != nil {
 		t.Errorf("got error on regexp match: %v", err)
 	}

@@ -1851,22 +1851,27 @@ func TestDedupedVisitsByClient(t *testing.T) {
 	body := w.Body.Bytes()
 	for _, clt := range newclients {
 		if !bytes.Contains(body, []byte(clt.Lastname)) {
-			t.Errorf("unable to find %v in %v",
+			t.Errorf("unable to find lastname %v in \n%v",
 				clt.Lastname, string(body))
 		}
 		if !bytes.Contains(body, []byte(clt.Address)) {
-			t.Errorf("unable to find %v in %v",
+			t.Errorf("unable to find address %v in \n%v",
 				clt.Address, string(body))
+		}
+		city := "San Carlos, CA 94070"
+		if !bytes.Contains(body, []byte(city)) {
+			t.Errorf("unable to find City %v in \n%v",
+				city, string(body))
 		}
 		if len(clt.Apt) > 0 {
 			if !bytes.Contains(body, []byte(clt.Apt)) {
-				t.Errorf("unable to find %v in %v",
+				t.Errorf("unable to find apt %v in \n%v",
 					clt.Apt, string(body))
 
-				}
+			}
 		}
 	}
-	m, err := regexp.Match(`(?s).*ozanam, frederic</a></td>.*123 Laurel St</td>.*1</td>.*0</td>.*0</td>.*1</td>.*Seton, Elizabeth</a></td>.*789 Chestnut St, Apt 99</td>.*0</td>.*1</td>.*0</td>.*1</td>.*1</td>.*1</td>.*0</td>.*2</td>`, body)
+	m, err := regexp.Match(`(?s).*ozanam, frederic</a></td>.*123 Laurel St, San Carlos, CA 94070</td>.*1</td>.*0</td>.*0</td>.*1</td>.*Seton, Elizabeth</a></td>.*789 Chestnut St, Apt 99, San Carlos, CA 94070</td>.*0</td>.*1</td>.*0</td>.*1</td>.*1</td>.*1</td>.*0</td>.*2</td>`, body)
 	if err != nil {
 		t.Errorf("got error on regexp match: %v", err)
 	}
@@ -1973,15 +1978,27 @@ func TestDownloadDedupedVisitsByClient(t *testing.T) {
 	body := w.Body.Bytes()
 	for _, clt := range newclients {
 		if !bytes.Contains(body, []byte(clt.Lastname)) {
-			t.Errorf("unable to find %v in %v",
+			t.Errorf("unable to find %v in \n%v",
 				clt.Lastname, string(body))
 		}
 		if !bytes.Contains(body, []byte(clt.Address)) {
-			t.Errorf("unable to find %v in %v",
+			t.Errorf("unable to find %v in \n%v",
 				clt.Address, string(body))
 		}
+		city := "San Carlos, CA 94070"
+		if !bytes.Contains(body, []byte(city)) {
+			t.Errorf("unable to find City %v in \n%v",
+				city, string(body))
+		}
+		if len(clt.Apt) > 0 {
+			if !bytes.Contains(body, []byte(clt.Apt)) {
+				t.Errorf("unable to find apt %v in \n%v",
+					clt.Apt, string(body))
+
+			}
+		}
 	}
-	m, err := regexp.Match(`(?s).*"ozanam, frederic".*"123 Laurel St".*"1".*"0".*"0".*"1".*"Seton, Elizabeth".*"789 Chestnut St, Apt 99".*"0".*"1".*"0".*"1".*"1".*"1".*"0".*"2"`, body)
+	m, err := regexp.Match(`(?s).*"ozanam, frederic".*"123 Laurel St, San Carlos, CA 94070".*"1".*"0".*"0".*"1".*"Seton, Elizabeth".*"789 Chestnut St, Apt 99, San Carlos, CA 94070".*"0".*"1".*"0".*"1".*"1".*"1".*"0".*"2"`, body)
 	if err != nil {
 		t.Errorf("got error on regexp match: %v", err)
 	}

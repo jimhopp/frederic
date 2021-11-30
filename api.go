@@ -162,6 +162,7 @@ func addclient(c context.Context, w http.ResponseWriter, r *http.Request) {
 			clt.CrossStreet, clt.DOB, clt.Phonenum, clt.Altphonenum,
 			clt.Altphonedesc, clt.Ethnicity, clt.ReferredBy,
 			clt.Notes, clt.Adultmales, clt.Adultfemales,
+			clt.LastAuditDt,
 			clt.Fammbrs, clt.Financials},
 	}
 	b, err := json.Marshal(newrec)
@@ -614,6 +615,7 @@ func getallclients(c context.Context, w http.ResponseWriter, r *http.Request) {
 			clients[i].Altphonedesc, clients[i].Ethnicity,
 			clients[i].ReferredBy, clients[i].Notes,
 			clients[i].Adultmales, clients[i].Adultfemales,
+			clients[i].LastAuditDt,
 			clients[i].Fammbrs, clients[i].Financials}}
 	}
 	log.Debugf(c, "getallclients: clientrecs = %v\n", clientrecs)

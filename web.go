@@ -39,6 +39,7 @@ type client struct {
 	Notes        string
 	Adultmales   string
 	Adultfemales string
+	LastAuditDt  string
 	Fammbrs      []fammbr
 	Financials   financials
 }
